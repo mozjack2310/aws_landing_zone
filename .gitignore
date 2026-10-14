@@ -1,0 +1,15 @@
+# Terraform / OpenTofu State & Binaries
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan.binary
+tfplan.json
+crash.log
+
+# Private Keys & Sensitive的变量
+certs/*.key
+certs/*.csr
+certs/*.srl
+*.tfvars
+*.tfvars.json
