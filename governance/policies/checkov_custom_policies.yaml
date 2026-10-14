@@ -1,0 +1,17 @@
+---
+metadata:
+  name: "Ensure Security Groups prohibit 0.0.0.0/0 on Management Ports"
+  id: "CKV2_FORRAD_001"
+  guidelines: "Direct public ingress on management ports is strictly prohibited per ADR-005."
+  category: "NETWORKING"
+  severity: "HIGH"
+scope:
+  provider: "aws"
+definition:
+  cond_type: "attribute"
+  resource_types:
+    - "aws_security_group_rule"
+    - "aws_security_group"
+  attribute: "cidr_blocks"
+  operator: "not_contains"
+  value: "0.0.0.0/0"
