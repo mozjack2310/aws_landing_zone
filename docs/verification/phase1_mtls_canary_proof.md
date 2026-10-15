@@ -40,3 +40,12 @@ flowchart LR
     classDef gate fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
     class ShiftLeft,Runtime gate;
 ```
+- **OIDC Provider ARN:** `arn:aws:iam::<AWS_ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com`
+- **Assumed CI/CD Role:** `arn:aws:iam::<AWS_ACCOUNT_ID>:role/GitHubActionsLandingZoneRole`
+- **Immutable Subject Claim Prefix:** `repo:mozjack2310@16676098/aws_landing_zone@1420253933:*`
+- **Shift-Left PaC Gate (`shift-left-pac.yml`):** **PASS** (28 Passed, 0 Failed, 1 FinOps Audited Skip)
+- **Parallel State Drift Audit (`drift-detection.yml` Run `38775158022`):**
+  - `bootstrap`: **PASS / IN_SYNC** (17s)
+  - `network-hub`: **PASS / IN_SYNC** (16s)
+  - `spoke-vending`: **PASS / IN_SYNC** (23s)
+  - `governance`: **PASS / IN_SYNC** (24s)
