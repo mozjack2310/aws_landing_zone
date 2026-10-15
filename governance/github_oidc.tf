@@ -7,14 +7,14 @@ variable "github_repo" {
 }
 
 locals {
-  github_oidc_domain = "token.actions.githubusercontent.com"
+  github_oidc_domain     = "token.actions.githubusercontent.com"
+  github_oidc_sub_prefix = "repo:mozjack2310@16676098/aws_landing_zone@1420253933"
 }
 
 resource "aws_iam_openid_connect_provider" "github_actions" {
   url            = "https://${local.github_oidc_domain}"
   client_id_list = ["sts.amazonaws.com"]
 
-  # Complete GitHub Actions OIDC root/intermediate thumbprint chain
   thumbprint_list = [
     "6938fd4d98bab03faadb97b34396831e3780aea1",
     "1c58a3a8518e8759bf075b76b750d4f2df264fcd",
@@ -41,7 +41,10 @@ resource "aws_iam_role" "github_actions_pac_drift" {
             "${local.github_oidc_domain}:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            "${local.github_oidc_domain}:sub" = "repo:${var.github_repo}:*"
+            "${local.github_oidc_domain}:sub" = [
+              "${local.github_oidc_sub_prefix}:*",
+              "repo:${var.github_repo}:*"
+            ]
           }
         }
       }
