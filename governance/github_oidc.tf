@@ -11,9 +11,15 @@ locals {
 }
 
 resource "aws_iam_openid_connect_provider" "github_actions" {
-  url             = "https://${local.github_oidc_domain}"
-  client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
+  url            = "https://${local.github_oidc_domain}"
+  client_id_list = ["sts.amazonaws.com"]
+
+  # Complete GitHub Actions OIDC root/intermediate thumbprint chain
+  thumbprint_list = [
+    "6938fd4d98bab03faadb97b34396831e3780aea1",
+    "1c58a3a8518e8759bf075b76b750d4f2df264fcd",
+    "2b18947a6a9fc7764fd8b5fb18a863b0c6dac24f"
+  ]
 }
 
 resource "aws_iam_role" "github_actions_pac_drift" {
@@ -43,7 +49,6 @@ resource "aws_iam_role" "github_actions_pac_drift" {
   })
 }
 
-# Read-only permissions across the account + S3 state read/lock access for `terraform plan`
 resource "aws_iam_role_policy_attachment" "github_oidc_readonly" {
   role       = aws_iam_role.github_actions_pac_drift.name
   policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
