@@ -4,6 +4,9 @@ Production-grade, multi-account AWS Landing Zone and Hybrid Edge Foundation engi
 
 ## 1. Architecture & State Blast-Radius Isolation
 
+![ForRad Hybrid Landing Zone Architecture](docs/diagrams/forrad_hybrid_landing_zone.png)
+
+
 ```mermaid
 flowchart TD
     subgraph Layer1 ["Layer 1: bootstrap/ (Remote State Foundation)"]
