@@ -1,0 +1,54 @@
+name: "Automated Platform Drift Detection"
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  detect-drift:
+    name: "Audit State vs Live Cloud (${{ matrix.layer }})"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        layer: [bootstrap, governance, network-hub, spoke-vending]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.5"
+          terraform_wrapper: false
+
+      - name: Authenticate via AWS OIDC (Zero Static Keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::052535487590:role/GitHubActionsLandingZoneRole
+          aws-region: us-east-1
+
+      - name: Terraform Init (${{ matrix.layer }})
+        run: terraform -chdir="${{ matrix.layer }}" init -input=false
+
+      - name: Execute Drift Check (detailed-exitcode)
+        run: |
+          set +e
+          terraform -chdir="${{ matrix.layer }}" plan -detailed-exitcode -no-color -input=false
+          EXIT_CODE=$?
+          set -e
+          if [ "$EXIT_CODE" -eq 0 ]; then
+            echo "PASS: Layer ${{ matrix.layer }} is IN_SYNC (Zero Drift)."
+          elif [ "$EXIT_CODE" -eq 2 ]; then
+            echo "CRITICAL DRIFT DETECTED in layer: ${{ matrix.layer }}"
+            exit 2
+          else
+            echo "ERROR running terraform plan in layer: ${{ matrix.layer }}"
+            exit 1
+          fi

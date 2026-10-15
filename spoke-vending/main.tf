@@ -139,7 +139,7 @@ resource "aws_flow_log" "spoke" {
 
   destination_options {
     file_format        = "parquet"
-    per_hour_partition  = true
+    per_hour_partition = true
   }
 
   tags = {
