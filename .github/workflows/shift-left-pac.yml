@@ -1,0 +1,45 @@
+name: "Shift-Left Policy-as-Code & IaC Gate"
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+permissions:
+  contents: read
+
+jobs:
+  static-pac-gate:
+    name: "Terraform Validate & Checkov Security Gate"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.5"
+
+      - name: Canonical Format Check (terraform fmt)
+        run: terraform fmt -check -recursive
+
+      - name: Validate All 4 Architectural Layers (Zero Cloud Credentials Needed)
+        run: |
+          for layer in bootstrap governance network-hub spoke-vending; do
+            echo "==> Validating layer: $layer"
+            terraform -chdir="$layer" init -backend=false
+            terraform -chdir="$layer" validate
+          done
+
+      - name: Execute Checkov Shift-Left Security & FinOps Gate
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: spoke-vending
+          external_checks_dir: governance/policies
+          framework: terraform
+          quiet: true
+          compact: true
+          soft_fail: false

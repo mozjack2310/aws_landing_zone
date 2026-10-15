@@ -17,3 +17,26 @@
 | **Positive Telemetry Write/Read** | `forrad-hybrid-telemetry-state-dev` | `dynamodb:PutItem` / `GetItem` (`KBMX`) | **PASS** (`SYNCED_VIA_ROLES_ANYWHERE_MTLS`) |
 | **Negative State Lock Scan** | `corp-platform-tflocks` | `dynamodb:Scan` | **BLOCKED** (`AccessDeniedException`) |
 | **Negative State Bucket Enumeration** | `s3://corp-platform-tfstate-*` | `s3:ListAllMyBuckets` | **BLOCKED** (`AccessDenied`) |
+
+## 4. End-to-End Shift-Left PaC & Runtime Drift Architecture
+
+```mermaid
+flowchart LR
+    subgraph ShiftLeft ["Stage 1: GitHub Actions Shift-Left Gate (Pre-Merge)"]
+        PR["Git Push / PR"] --> FMT["terraform fmt & validate"]
+        FMT --> CKV["Checkov PaC Scanner"]
+        POL["checkov_custom_policies.yaml<br/>CKV2_FORRAD_001"] --> CKV
+        CKV -->|28 Passed / 0 Failed| OIDC["GitHub OIDC -> AWS STS"]
+    end
+
+    subgraph Runtime ["Stage 2: Cloud Runtime & Nightly Drift Plane ($0.00/mo Idle)"]
+        OIDC --> PLAN["Nightly 03:00 UTC<br/>terraform plan -detailed-exitcode"]
+        CT["CloudTrail Management Events<br/>+ Control Tower Drift"] --> EB["EventBridge Rule:<br/>forrad-control-plane-security-drift"]
+        EB -->|SCP / Root CA / IAM Key Tamper| SNS["SNS Topic:<br/>forrad-security-governance-alerts"]
+        PLAN -.->|Exit Code 2: Drift| SNS
+        SNS -->|Real-Time Alert| EMAIL["secops@forradwx.app"]
+    end
+
+    classDef gate fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    class ShiftLeft,Runtime gate;
+```

@@ -12,7 +12,7 @@ resource "aws_budgets_budget" "platform_cost_cap" {
   budget_type  = "COST"
   limit_amount = "5.0"
   limit_unit   = "USD"
-  time_unit   = "MONTHLY"
+  time_unit    = "MONTHLY"
 
   notification {
     comparison_operator        = "GREATER_THAN"
