@@ -1,7 +1,7 @@
 from diagrams import Cluster, Diagram, Edge
 from diagrams.aws.storage import S3
 from diagrams.aws.database import Dynamodb
-from diagrams.aws.security import KMS, IAM, CertificateAuthority
+from diagrams.aws.security import KMS, IAMRole, CertificateAuthority
 from diagrams.aws.management import Organizations, Cloudtrail
 from diagrams.aws.cost import Budgets
 from diagrams.aws.integration import Eventbridge, SNS
@@ -39,7 +39,7 @@ with Diagram(
             org = Organizations("4 OUs + 3 SCPs\n(Region / Audit / Zero-Key)")
             budget = Budgets("$5 Cap + $1 Tripwire")
             ca_anchor = CertificateAuthority("Roles Anywhere\nTrust Anchor (Root CA)")
-            oidc_role = IAM("GitHubActions\nLandingZoneRole")
+            oidc_role = IAMRole("GitHubActions\nLandingZoneRole")
             eb_drift = Eventbridge("Control-Plane\nDrift Rule")
             sns_alert = SNS("Security Alerts\nbjgarner@uab.edu")
             Cloudtrail("CloudTrail") >> eb_drift >> sns_alert
@@ -50,9 +50,10 @@ with Diagram(
         with Cluster("Layer 4: spoke-vending/ (ForRad Dev Spoke 10.100.16.0/20)"):
             spoke_vpc = VPC("Multi-AZ Spoke VPC\n(App /22, DB /24, TGW /28)")
             vpce = Endpoint("Free S3 & DynamoDB\nGateway Endpoints")
-            edge_role = IAM("ForRadEdgeBroker\nRole-dev (1h STS)")
+            edge_role = IAMRole("ForRadEdgeBroker\nRole-dev (1h STS)")
             ddb_state = Dynamodb("forrad-hybrid-\ntelemetry-state-dev")
             spoke_vpc >> vpce >> ddb_state
+    tf_s3 >> Edge(style="invis") >> org >> Edge(style="invis") >> tgw >> Edge(style="invis") >> spoke_vpc
 
     gh_oidc >> Edge(label="JWT OIDC", color="darkblue") >> oidc_role >> tf_s3
     edge_node >> Edge(label="X.509 mTLS", color="darkgreen") >> ca_anchor >> edge_role >> ddb_state
