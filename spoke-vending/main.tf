@@ -1,5 +1,10 @@
 data "aws_availability_zones" "available" {
   state = "available"
+
+  filter {
+    name   = "zone-name"
+    values = ["us-east-1a", "us-east-1b"]
+  }
 }
 
 # Pull the Roles Anywhere Trust Anchor ARN directly from Layer 2 (governance) state
@@ -144,6 +149,7 @@ resource "aws_flow_log" "spoke" {
 
 # --- 5. Serverless HDEF State & Telemetry Table ($0.00/mo Idle) ---
 resource "aws_dynamodb_table" "forrad_telemetry_state" {
+  #checkov:skip=CKV_AWS_119:FinOps ADR-004 guardrail - Dev ephemeral public NEXRAD telemetry uses AWS-owned KMS key ($0.00/mo) to avoid $1.00/mo CMK retainer
   name         = "forrad-hybrid-telemetry-state-${var.environment}"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "StationID"
@@ -162,6 +168,10 @@ resource "aws_dynamodb_table" "forrad_telemetry_state" {
   ttl {
     attribute_name = "ExpiresAt"
     enabled        = true
+  }
+
+  point_in_time_recovery {
+    enabled = true
   }
 
   server_side_encryption {
