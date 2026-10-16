@@ -43,3 +43,12 @@ jobs:
           quiet: true
           compact: true
           soft_fail: false
+
+      - name: Execute Checkov Container Security Gate (edge-broker/Dockerfile)
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          file: edge-broker/Dockerfile
+          framework: dockerfile
+          quiet: true
+          compact: true
+          soft_fail: false
