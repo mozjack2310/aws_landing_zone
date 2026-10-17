@@ -56,6 +56,7 @@ def fetch_live_nws_radar(station_id: str, fallback_loc: str, now_epoch: int) -> 
                 "SourceEndpoint": url,
                 "AuthMechanism": "IAM_ROLES_ANYWHERE_X509_MTLS",
                 "IngressDomain": "https://forradwx.app",
+                "IngressDomain": "https://forradwx.app",
                 "ExpiresAt": now_epoch + 86400,
             }
     except Exception as exc:

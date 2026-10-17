@@ -51,3 +51,7 @@ flowchart TD
 ## 4. Zero-Trust Split-Domain Edge Ingress (`forradwx.app` & `forradwx.com`)
 - **Primary Telemetry Gateway (`https://forradwx.app`):** Enforces strict `.app` HSTS preload transport security, terminating public client traffic at the Cloudflare Anycast edge and routing via outbound-only `cloudflared` QUIC tunnels into the RHEL 10 `forrad-net` microservice bridge (zero open WAN firewall ports).
 - **Discovery & Canonical Redirect (`https://forradwx.com`):** Executes an edge-level HTTP `301 Moved Permanently` redirect to `https://forradwx.app` to preserve single-origin CORS pinning and cache locality.
+
+## 4. Zero-Trust Split-Domain Edge Ingress (`forradwx.app` & `forradwx.com`)
+- **Primary Telemetry Gateway (`https://forradwx.app`):** Enforces strict `.app` HSTS preload transport security, terminating public client traffic at the Cloudflare Anycast edge and routing via outbound-only `cloudflared` QUIC tunnels into the RHEL 10 `forrad-net` microservice bridge (zero open WAN firewall ports).
+- **Discovery & Canonical Redirect (`https://forradwx.com`):** Executes an edge-level HTTP `301 Moved Permanently` redirect to `https://forradwx.app` to preserve single-origin CORS pinning and cache locality.
