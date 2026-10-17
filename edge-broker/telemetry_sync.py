@@ -16,7 +16,7 @@ from boto3.dynamodb.conditions import Key
 PROFILE_NAME = "forrad-edge-broker"
 REGION = "us-east-1"
 TABLE_NAME = "forrad-hybrid-telemetry-state-dev"
-NWS_USER_AGENT = "ForRad-HDEF-EdgeBroker/1.0 (https://github.com/mozjack2310/aws_landing_zone)"
+NWS_USER_AGENT = "ForRad-HDEF-EdgeBroker/1.0 (+https://forradwx.app; https://github.com/mozjack2310/aws_landing_zone)"
 
 BOTO_CONFIG = Config(
     region_name=REGION,
@@ -55,6 +55,7 @@ def fetch_live_nws_radar(station_id: str, fallback_loc: str, now_epoch: int) -> 
                 "LatencySeconds": Decimal(str(round(float(latency_sec), 2))),
                 "SourceEndpoint": url,
                 "AuthMechanism": "IAM_ROLES_ANYWHERE_X509_MTLS",
+                "IngressDomain": "https://forradwx.app",
                 "ExpiresAt": now_epoch + 86400,
             }
     except Exception as exc:
