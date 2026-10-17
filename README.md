@@ -47,6 +47,7 @@ flowchart TD
 
 ## 3. Empirical Verification Artifacts
 - [Phase 1 Zero-Trust X.509 mTLS & Blast-Radius Canary Proof](docs/verification/phase1_mtls_canary_proof.md)
+- [Architecture Decision Records (ADR-001 through ADR-006)](docs/adr/ADR_INDEX.md)
 
 ## 4. Zero-Trust Split-Domain Edge Ingress (`forradwx.app` & `forradwx.com`)
 - **Primary Telemetry Gateway (`https://forradwx.app`):** Enforces strict `.app` HSTS preload transport security, terminating public client traffic at the Cloudflare Anycast edge and routing via outbound-only `cloudflared` QUIC tunnels into the RHEL 10 `forrad-net` microservice bridge (zero open WAN firewall ports).
