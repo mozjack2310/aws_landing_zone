@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 data "aws_availability_zones" "available" {
   state = "available"
 
@@ -11,7 +13,7 @@ data "aws_availability_zones" "available" {
 data "terraform_remote_state" "governance" {
   backend = "s3"
   config = {
-    bucket = "corp-platform-tfstate-<AWS_ACCOUNT_ID>-us-east-1"
+    bucket = "corp-platform-tfstate-${data.aws_caller_identity.current.account_id}-us-east-1"
     key    = "governance/terraform.tfstate"
     region = "us-east-1"
   }

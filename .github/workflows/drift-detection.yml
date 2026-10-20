@@ -31,13 +31,15 @@ jobs:
       - name: Authenticate via AWS OIDC (Zero Static Keys)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::<AWS_ACCOUNT_ID>:role/GitHubActionsLandingZoneRole
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsLandingZoneRole
           aws-region: us-east-1
 
       - name: Terraform Init (${{ matrix.layer }})
-        run: terraform -chdir="${{ matrix.layer }}" init -input=false
+        run: terraform -chdir="${{ matrix.layer }}" init -input=false -backend-config="bucket=corp-platform-tfstate-${{ secrets.AWS_ACCOUNT_ID }}-us-east-1"
 
       - name: Execute Drift Check (detailed-exitcode)
+        env:
+          TF_VAR_budget_alert_email: ${{ secrets.BUDGET_ALERT_EMAIL }}
         run: |
           set +e
           terraform -chdir="${{ matrix.layer }}" plan -detailed-exitcode -no-color -input=false

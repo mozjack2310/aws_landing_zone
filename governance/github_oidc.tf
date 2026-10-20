@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 # --- 7. Zero-Trust GitHub Actions OIDC Federation (ADR-002 / ADR-005 — $0.00/mo Idle) ---
 
 variable "github_repo" {
@@ -76,9 +78,9 @@ resource "aws_iam_role_policy" "github_oidc_tfstate_lock" {
           "kms:DescribeKey"
         ]
         Resource = [
-          "arn:aws:s3:::corp-platform-tfstate-<AWS_ACCOUNT_ID>-us-east-1",
-          "arn:aws:s3:::corp-platform-tfstate-<AWS_ACCOUNT_ID>-us-east-1/*",
-          "arn:aws:kms:us-east-1:<AWS_ACCOUNT_ID>:key/*"
+          "arn:aws:s3:::corp-platform-tfstate-${data.aws_caller_identity.current.account_id}-us-east-1",
+          "arn:aws:s3:::corp-platform-tfstate-${data.aws_caller_identity.current.account_id}-us-east-1/*",
+          "arn:aws:kms:us-east-1:${data.aws_caller_identity.current.account_id}:key/*"
         ]
       }
     ]

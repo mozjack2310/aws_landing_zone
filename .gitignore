@@ -13,3 +13,7 @@ certs/*.csr
 certs/*.srl
 *.tfvars
 *.tfvars.json
+backend.hcl
+**/backend.hcl
+terraform.auto.tfvars
+**/terraform.auto.tfvars
