@@ -7,15 +7,9 @@ terraform {
       version = "~> 5.40"
     }
   }
-
-  backend "s3" {
-    key          = "governance/terraform.tfstate"
-    region       = "us-east-1"
-    use_lockfile = true
-    encrypt      = true
-  }
 }
 
+# ADR-004: Explicit TPS rate-limit mitigation against Control Tower daily sweeps
 provider "aws" {
   region      = var.aws_region
   max_retries = 9
