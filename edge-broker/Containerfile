@@ -10,8 +10,9 @@ RUN microdnf upgrade -y &&     microdnf install -y ca-certificates curl &&     c
 
 USER 1001
 WORKDIR /app
-RUN pip install --no-cache-dir boto3 redis
+RUN pip install --no-cache-dir boto3 redis pyarrow
 COPY --chown=1001:0 telemetry_sync.py /app/telemetry_sync.py
+COPY --chown=1001:0 cold_parquet_sync.py /app/cold_parquet_sync.py
 
 HEALTHCHECK --interval=60s --timeout=5s --start-period=10s --retries=3   CMD python3 -c "import os, sys; sys.exit(0 if os.path.exists('/app/telemetry_sync.py') else 1)"
 

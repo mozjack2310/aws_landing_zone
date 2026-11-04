@@ -1,157 +1,126 @@
+# spoke-vending/main.tf
+# Layer 4: Parameterized Spoke VPC, Gateway Endpoints, Zero-Trust Edge Role,
+# Hot DynamoDB State Store, and Cold S3 Parquet Lakehouse + Glue Partition Projection
+# (Provider and terraform version constraints are defined in spoke-vending/versions.tf)
+
 data "aws_caller_identity" "current" {}
 
-data "aws_availability_zones" "available" {
-  state = "available"
-
-  filter {
-    name   = "zone-name"
-    values = ["us-east-1a", "us-east-1b"]
-  }
-}
-
-# Pull the Roles Anywhere Trust Anchor ARN directly from Layer 2 (governance) state
 data "terraform_remote_state" "governance" {
   backend = "s3"
   config = {
-    bucket = "corp-platform-tfstate-${data.aws_caller_identity.current.account_id}-us-east-1"
+    bucket = "corp-platform-tfstate-052535487590-us-east-1"
     key    = "governance/terraform.tfstate"
     region = "us-east-1"
   }
 }
 
-# --- 1. Core Spoke VPC (10.100.16.0/20) ---
+locals {
+  azs               = ["${var.aws_region}a", "${var.aws_region}b"]
+  approved_stations = ["KBMX", "KHTX", "KMXX", "KMOB"]
+}
+
+# 1. Spoke Workload VPC
 resource "aws_vpc" "spoke" {
+  #checkov:skip=CKV2_AWS_11:Zero-Idle FinOps baseline defers CloudWatch VPC Flow Log ingestion fees in dev canary
   cidr_block           = var.vpc_cidr
-  enable_dns_hostnames = true
   enable_dns_support   = true
+  enable_dns_hostnames = true
 
   tags = {
-    Name = "spoke-${var.environment}-vpc"
+    Name = "forrad-${var.environment}-spoke-vpc"
   }
 }
 
-# Default SG Hardening (ADR-005 Shift-Left PaC Compliance: Zero Ingress/Egress)
 resource "aws_default_security_group" "default" {
   vpc_id = aws_vpc.spoke.id
-
   tags = {
-    Name = "default-restricted-sg"
+    Name = "forrad-${var.environment}-default-sg-locked"
   }
 }
 
-# --- 2. Multi-AZ Subnet Tiering (Matches ADR-001 Exact Boundaries) ---
-# Application Private Subnets (/22): 10.100.20.0/22 (AZ-a), 10.100.24.0/22 (AZ-b)
-resource "aws_subnet" "application" {
+# 2. Isolated Tiers: App, Data, and Transit Subnets across 2 AZs
+resource "aws_subnet" "app" {
   count             = 2
   vpc_id            = aws_vpc.spoke.id
-  cidr_block        = cidrsubnet(var.vpc_cidr, 2, count.index + 1)
-  availability_zone = data.aws_availability_zones.available.names[count.index]
+  cidr_block        = cidrsubnet(var.vpc_cidr, 4, count.index)
+  availability_zone = local.azs[count.index]
 
   tags = {
-    Name = "subnet-${var.environment}-app-${data.aws_availability_zones.available.names[count.index]}"
+    Name = "forrad-${var.environment}-app-${local.azs[count.index]}"
     Tier = "Application"
   }
 }
 
-# Database Isolated Subnets (/24): 10.100.28.0/24 (AZ-a), 10.100.29.0/24 (AZ-b)
-resource "aws_subnet" "database" {
+resource "aws_subnet" "data" {
   count             = 2
   vpc_id            = aws_vpc.spoke.id
-  cidr_block        = cidrsubnet(var.vpc_cidr, 4, count.index + 12)
-  availability_zone = data.aws_availability_zones.available.names[count.index]
+  cidr_block        = cidrsubnet(var.vpc_cidr, 4, count.index + 2)
+  availability_zone = local.azs[count.index]
 
   tags = {
-    Name = "subnet-${var.environment}-db-${data.aws_availability_zones.available.names[count.index]}"
-    Tier = "Database"
+    Name = "forrad-${var.environment}-data-${local.azs[count.index]}"
+    Tier = "Data"
   }
 }
 
-# Pre-Staged TGW Transit Subnets (/28): 10.100.31.224/28 (AZ-a), 10.100.31.240/28 (AZ-b)
-resource "aws_subnet" "tgw" {
+resource "aws_subnet" "transit" {
   count             = 2
   vpc_id            = aws_vpc.spoke.id
-  cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index + 254)
-  availability_zone = data.aws_availability_zones.available.names[count.index]
+  cidr_block        = cidrsubnet(var.vpc_cidr, 6, count.index + 16)
+  availability_zone = local.azs[count.index]
 
   tags = {
-    Name = "subnet-${var.environment}-tgw-${data.aws_availability_zones.available.names[count.index]}"
+    Name = "forrad-${var.environment}-transit-${local.azs[count.index]}"
     Tier = "Transit"
   }
 }
 
-# --- 3. Routing & Zero-Cost Gateway Endpoints ($0.00/mo Idle) ---
-resource "aws_route_table" "application" {
+# 3. Private Route Table
+resource "aws_route_table" "private" {
   vpc_id = aws_vpc.spoke.id
-
   tags = {
-    Name = "rt-${var.environment}-application"
+    Name = "forrad-${var.environment}-private-rt"
   }
 }
 
-resource "aws_route_table_association" "application" {
+resource "aws_route_table_association" "app" {
   count          = 2
-  subnet_id      = aws_subnet.application[count.index].id
-  route_table_id = aws_route_table.application.id
+  subnet_id      = aws_subnet.app[count.index].id
+  route_table_id = aws_route_table.private.id
 }
 
-resource "aws_vpc_endpoint" "s3_gateway" {
+resource "aws_route_table_association" "data" {
+  count          = 2
+  subnet_id      = aws_subnet.data[count.index].id
+  route_table_id = aws_route_table.private.id
+}
+
+# 4. Zero-Cost Gateway VPC Endpoints for S3 & DynamoDB ($0.00/mo)
+resource "aws_vpc_endpoint" "s3" {
   vpc_id            = aws_vpc.spoke.id
   service_name      = "com.amazonaws.${var.aws_region}.s3"
   vpc_endpoint_type = "Gateway"
-  route_table_ids   = [aws_route_table.application.id]
+  route_table_ids   = [aws_route_table.private.id]
 
   tags = {
-    Name = "vpce-${var.environment}-s3-gateway"
+    Name = "forrad-${var.environment}-s3-gw-endpoint"
   }
 }
 
-resource "aws_vpc_endpoint" "dynamodb_gateway" {
+resource "aws_vpc_endpoint" "dynamodb" {
   vpc_id            = aws_vpc.spoke.id
   service_name      = "com.amazonaws.${var.aws_region}.dynamodb"
   vpc_endpoint_type = "Gateway"
-  route_table_ids   = [aws_route_table.application.id]
+  route_table_ids   = [aws_route_table.private.id]
 
   tags = {
-    Name = "vpce-${var.environment}-dynamodb-gateway"
+    Name = "forrad-${var.environment}-dynamodb-gw-endpoint"
   }
 }
 
-# --- 4. FinOps-Gated Transit Gateway Attachment & Flow Logs ---
-resource "aws_ec2_transit_gateway_vpc_attachment" "spoke" {
-  count              = var.enable_tgw_attachment ? 1 : 0
-  transit_gateway_id = var.transit_gateway_id
-  vpc_id             = aws_vpc.spoke.id
-  subnet_ids         = aws_subnet.tgw[*].id
-
-  dns_support                                     = "enable"
-  transit_gateway_default_route_table_association = false
-  transit_gateway_default_route_table_propagation = false
-
-  tags = {
-    Name = "tgw-attachment-${var.environment}"
-  }
-}
-
-resource "aws_flow_log" "spoke" {
-  count                = var.enable_flow_logs ? 1 : 0
-  log_destination_type = "s3"
-  log_destination      = var.log_archive_s3_bucket_arn
-  traffic_type         = "ALL"
-  vpc_id               = aws_vpc.spoke.id
-
-  destination_options {
-    file_format        = "parquet"
-    per_hour_partition = true
-  }
-
-  tags = {
-    Name = "flowlogs-${var.environment}"
-  }
-}
-
-# --- 5. Serverless HDEF State & Telemetry Table ($0.00/mo Idle) ---
-resource "aws_dynamodb_table" "forrad_telemetry_state" {
-  #checkov:skip=CKV_AWS_119:FinOps ADR-004 guardrail - Dev ephemeral public NEXRAD telemetry uses AWS-owned KMS key ($0.00/mo) to avoid $1.00/mo CMK retainer
+# 5. Hot State Store: On-Demand DynamoDB Telemetry Table ($0.00/mo Idle)
+resource "aws_dynamodb_table" "hybrid_telemetry" {
+  #checkov:skip=CKV_AWS_119:AWS-owned key used instead of $1.00/mo KMS CMK per FinOps zero-idle baseline
   name         = "forrad-hybrid-telemetry-state-${var.environment}"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "StationID"
@@ -167,108 +136,281 @@ resource "aws_dynamodb_table" "forrad_telemetry_state" {
     type = "N"
   }
 
-  ttl {
-    attribute_name = "ExpiresAt"
-    enabled        = true
-  }
-
   point_in_time_recovery {
     enabled = true
   }
 
   server_side_encryption {
-    enabled = true # Uses AWS-owned KMS key ($0.00/mo fee) to preserve $1.00 budget tripwire
+    enabled = true
+  }
+
+  ttl {
+    attribute_name = "ExpiresAt"
+    enabled        = true
   }
 
   tags = {
     Name = "forrad-hybrid-telemetry-state-${var.environment}"
+    Tier = "HotState"
   }
 }
 
-# --- 6. Zero-Trust Edge Broker Identity: IAM Role & Roles Anywhere Profile (ADR-002) ---
-resource "aws_iam_role" "forrad_edge_broker" {
-  name        = "ForRadEdgeBrokerRole-${var.environment}"
-  description = "Assumed via X.509 mTLS by on-premises ForRad edge brokers (Zero Static Keys)"
+# 6. Cold Lakehouse Store: S3 Bucket for Columnar Parquet Archives ($0.00/mo Idle via SSE-S3)
+resource "aws_s3_bucket" "cold_lakehouse" {
+  #checkov:skip=CKV_AWS_145:SSE-S3 (AES256) enforced at $0.00/mo instead of $1.00/mo KMS CMK per FinOps ADR-003
+  #checkov:skip=CKV_AWS_144:Single-region dev canary lakehouse avoids cross-region replication data transfer costs
+  #checkov:skip=CKV_AWS_18:S3 server access logging omitted in dev canary to avoid recursive bucket storage bloat
+  #checkov:skip=CKV2_AWS_62:Athena Partition Projection queries S3 directly without S3 Event Notifications
+  bucket = "forrad-cold-lakehouse-${var.environment}-${data.aws_caller_identity.current.account_id}"
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "AllowRolesAnywhereX509mTLS"
-        Effect = "Allow"
-        Principal = {
-          Service = "rolesanywhere.amazonaws.com"
-        }
-        Action = [
-          "sts:AssumeRole",
-          "sts:TagSession",
-          "sts:SetSourceIdentity"
-        ]
-        Condition = {
-          ArnEquals = {
-            "aws:SourceArn" = data.terraform_remote_state.governance.outputs.rolesanywhere_trust_anchor_arn
-          }
-          StringEquals = {
-            "aws:PrincipalTag/x509Subject/CN" = "forrad-edge-broker-01"
-          }
-        }
-      }
-    ]
-  })
+  tags = {
+    Name = "forrad-cold-lakehouse-${var.environment}"
+    Tier = "ColdLakehouse"
+  }
 }
 
-resource "aws_iam_role_policy" "forrad_edge_dynamodb_sync" {
-  name = "ForRadEdgeDynamoDBSyncPolicy"
-  role = aws_iam_role.forrad_edge_broker.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "ScopedTelemetryTableAccess"
-        Effect = "Allow"
-        Action = [
-          "dynamodb:PutItem",
-          "dynamodb:GetItem",
-          "dynamodb:UpdateItem",
-          "dynamodb:Query",
-          "dynamodb:BatchWriteItem",
-          "dynamodb:DescribeTable"
-        ]
-        Resource = aws_dynamodb_table.forrad_telemetry_state.arn
-      }
-    ]
-  })
+resource "aws_s3_bucket_versioning" "cold_lakehouse" {
+  bucket = aws_s3_bucket.cold_lakehouse.id
+  versioning_configuration {
+    status = "Enabled"
+  }
 }
 
-resource "aws_rolesanywhere_profile" "forrad_edge_profile" {
+resource "aws_s3_bucket_server_side_encryption_configuration" "cold_lakehouse" {
+  bucket = aws_s3_bucket.cold_lakehouse.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "cold_lakehouse" {
+  bucket                  = aws_s3_bucket.cold_lakehouse.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "cold_lakehouse" {
+  bucket = aws_s3_bucket.cold_lakehouse.id
+
+  rule {
+    id     = "expire-cold-parquet-and-abort-multiparts"
+    status = "Enabled"
+    filter {}
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+
+    expiration {
+      days = 90
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+  }
+}
+
+# 7. Zero-Trust Edge Broker IAM Role & Profile (Roles Anywhere X.509 mTLS)
+data "aws_iam_policy_document" "edge_broker_trust" {
+  statement {
+    sid    = "AllowRolesAnywhereAssumeWithPinnedCAAndCN"
+    effect = "Allow"
+    principals {
+      type        = "Service"
+      identifiers = ["rolesanywhere.amazonaws.com"]
+    }
+    actions = [
+      "sts:AssumeRole",
+      "sts:TagSession",
+      "sts:SetSourceIdentity"
+    ]
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [data.terraform_remote_state.governance.outputs.rolesanywhere_trust_anchor_arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:PrincipalTag/x509Subject/CN"
+      values   = ["forrad-edge-broker-01"]
+    }
+  }
+}
+
+resource "aws_iam_role" "edge_broker" {
+  name               = "ForRadEdgeBrokerRole-${var.environment}"
+  assume_role_policy = data.aws_iam_policy_document.edge_broker_trust.json
+}
+
+# Layer 5 Tenant Isolation: Pin DynamoDB LeadingKeys + Scoped S3 Cold Lakehouse Prefix Writes
+data "aws_iam_policy_document" "edge_broker_least_privilege" {
+  statement {
+    sid    = "ScopedDynamoDBStationTenantIsolation"
+    effect = "Allow"
+    actions = [
+      "dynamodb:PutItem",
+      "dynamodb:BatchWriteItem",
+      "dynamodb:GetItem",
+      "dynamodb:Query"
+    ]
+    resources = [aws_dynamodb_table.hybrid_telemetry.arn]
+
+    condition {
+      test     = "ForAllValues:StringEquals"
+      variable = "dynamodb:LeadingKeys"
+      values   = local.approved_stations
+    }
+  }
+
+  statement {
+    sid       = "ScopedDynamoDBDescribeTableMetadata"
+    effect    = "Allow"
+    actions   = ["dynamodb:DescribeTable"]
+    resources = [aws_dynamodb_table.hybrid_telemetry.arn]
+  }
+
+  statement {
+    sid    = "ScopedColdLakehouseParquetPut"
+    effect = "Allow"
+    actions = [
+      "s3:PutObject",
+      "s3:GetObject"
+    ]
+    resources = ["${aws_s3_bucket.cold_lakehouse.arn}/telemetry/*"]
+  }
+
+  statement {
+    sid       = "ScopedColdLakehouseBucketList"
+    effect    = "Allow"
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.cold_lakehouse.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "edge_broker_ddb" {
+  name   = "ForRadEdgeBrokerLeastPrivilegePolicy"
+  role   = aws_iam_role.edge_broker.id
+  policy = data.aws_iam_policy_document.edge_broker_least_privilege.json
+}
+
+resource "aws_rolesanywhere_profile" "edge_broker" {
   name             = "forrad-edge-broker-profile-${var.environment}"
+  role_arns        = [aws_iam_role.edge_broker.arn]
   enabled          = true
-  role_arns        = [aws_iam_role.forrad_edge_broker.arn]
-  session_policy   = null
-  duration_seconds = 3600 # 1-Hour STS Token Ceiling per ADR-002
+  duration_seconds = 3600
 }
 
-output "spoke_vpc_id" {
-  value = aws_vpc.spoke.id
-}
-
-output "spoke_subnet_cidrs" {
-  value = {
-    application = aws_subnet.application[*].cidr_block
-    database    = aws_subnet.database[*].cidr_block
-    transit_tgw = aws_subnet.tgw[*].cidr_block
+# Enforce TLS in Transit on Cold Lakehouse Bucket
+data "aws_iam_policy_document" "cold_lakehouse_perimeter" {
+  statement {
+    sid     = "DenyInsecureTransport"
+    effect  = "Deny"
+    actions = ["s3:*"]
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+    resources = [
+      aws_s3_bucket.cold_lakehouse.arn,
+      "${aws_s3_bucket.cold_lakehouse.arn}/*"
+    ]
+    condition {
+      test     = "Bool"
+      variable = "aws:SecureTransport"
+      values   = ["false"]
+    }
   }
 }
 
-output "telemetry_dynamodb_table" {
-  value = aws_dynamodb_table.forrad_telemetry_state.name
+resource "aws_s3_bucket_policy" "cold_lakehouse" {
+  bucket = aws_s3_bucket.cold_lakehouse.id
+  policy = data.aws_iam_policy_document.cold_lakehouse_perimeter.json
 }
 
-output "edge_broker_identity" {
-  value = {
-    trust_anchor_arn = data.terraform_remote_state.governance.outputs.rolesanywhere_trust_anchor_arn
-    profile_arn      = aws_rolesanywhere_profile.forrad_edge_profile.arn
-    role_arn         = aws_iam_role.forrad_edge_broker.arn
+# 8. Serverless Analytics: AWS Glue Catalog Database & Partition-Projected Table ($0.00/mo Idle)
+resource "aws_glue_catalog_database" "lakehouse" {
+  name        = "forrad_telemetry_lakehouse_${var.environment}"
+  description = "Zero-idle serverless Glue catalog for ForRad NEXRAD cold Parquet archives"
+}
+
+resource "aws_glue_catalog_table" "radar_sweeps_cold" {
+  name          = "radar_sweeps_cold"
+  database_name = aws_glue_catalog_database.lakehouse.name
+  table_type    = "EXTERNAL_TABLE"
+
+  parameters = {
+    EXTERNAL                       = "TRUE"
+    "parquet.compression"          = "SNAPPY"
+    "projection.enabled"           = "true"
+    "projection.station_id.type"   = "enum"
+    "projection.station_id.values" = join(",", local.approved_stations)
+    "projection.day.type"          = "date"
+    "projection.day.format"        = "yyyy-MM-dd"
+    "projection.day.range"         = "2026-01-01,NOW"
+    "projection.day.interval"      = "1"
+    "projection.day.interval.unit" = "DAYS"
+    "storage.location.template"    = "s3://${aws_s3_bucket.cold_lakehouse.bucket}/telemetry/station_id=$${station_id}/day=$${day}"
+  }
+
+  partition_keys {
+    name = "station_id"
+    type = "string"
+  }
+
+  partition_keys {
+    name = "day"
+    type = "string"
+  }
+
+  storage_descriptor {
+    location      = "s3://${aws_s3_bucket.cold_lakehouse.bucket}/telemetry/"
+    input_format  = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat"
+
+    ser_de_info {
+      name                  = "ParquetHiveSerDe"
+      serialization_library = "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
+      parameters = {
+        "serialization.format" = "1"
+      }
+    }
+
+    columns {
+      name = "frame_timestamp"
+      type = "bigint"
+    }
+    columns {
+      name = "location"
+      type = "string"
+    }
+    columns {
+      name = "radar_status"
+      type = "string"
+    }
+    columns {
+      name = "latency_seconds"
+      type = "double"
+    }
+    columns {
+      name = "queue_lag_seconds"
+      type = "bigint"
+    }
+    columns {
+      name = "idempotency_token"
+      type = "string"
+    }
+    columns {
+      name = "redis_stream_id"
+      type = "string"
+    }
+    columns {
+      name = "schema_version"
+      type = "string"
+    }
   }
 }

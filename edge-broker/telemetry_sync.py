@@ -21,7 +21,7 @@ from boto3.dynamodb.conditions import Key
 import redis
 
 # --- Configuration & Constants ---
-PROFILE_NAME = os.getenv("AWS_PROFILE", "forrad-edge-broker")
+PROFILE_NAME = os.getenv("HDEF_AWS_PROFILE", "forrad-edge-broker")
 REGION = os.getenv("AWS_REGION", "us-east-1")
 TABLE_NAME = os.getenv("DDB_TABLE_NAME", "forrad-hybrid-telemetry-state-dev")
 
@@ -358,7 +358,7 @@ def audit_backplane_health(r: redis.Redis, fallback_count: int, max_lag_sec: int
 
 
 def main() -> None:
-    r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+    r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True, socket_connect_timeout=3, socket_timeout=5)
     ensure_consumer_group(r)
 
     # Single X.509 mTLS Session Instantiation (Caches 1-Hr STS token)

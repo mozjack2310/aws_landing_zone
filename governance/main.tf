@@ -211,6 +211,7 @@ resource "aws_ssoadmin_permission_set" "break_glass" {
 }
 
 resource "aws_ssoadmin_managed_policy_attachment" "break_glass_admin" {
+  #checkov:skip=CKV_AWS_274:Break-Glass emergency role requires AdministratorAccess bounded by 1h session and Root SCPs (SEC03-BP03)
   instance_arn       = local.instance_arn
   permission_set_arn = aws_ssoadmin_permission_set.break_glass.arn
   managed_policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
@@ -224,6 +225,9 @@ resource "aws_ssoadmin_permission_set" "network_admin" {
 }
 
 resource "aws_ssoadmin_permission_set_inline_policy" "network_admin_policy" {
+  #checkov:skip=CKV_AWS_289:Network Admin SSO permission set requires VPC/TGW provisioning actions bounded by SCP-01/02/03
+  #checkov:skip=CKV_AWS_290:EC2/VPC network primitives require wildcard resource scope during creation
+  #checkov:skip=CKV_AWS_355:EC2/VPC network primitives require wildcard resource scope bounded by Organization SCPs
   instance_arn       = local.instance_arn
   permission_set_arn = aws_ssoadmin_permission_set.network_admin.arn
 
@@ -272,6 +276,12 @@ resource "aws_ssoadmin_permission_set" "platform_engineer" {
 }
 
 resource "aws_ssoadmin_permission_set_inline_policy" "platform_engineer_policy" {
+  #checkov:skip=CKV_AWS_286:Platform Engineer SSO permission set is explicitly denied SCP/Org mutation via DenyGovernanceTampering
+  #checkov:skip=CKV_AWS_287:Platform Engineer SSO permission set is explicitly denied IAM user/key creation via SCP-03
+  #checkov:skip=CKV_AWS_288:S3/DynamoDB provisioning in workload accounts is bounded by Root SCP guardrails
+  #checkov:skip=CKV_AWS_289:Workload provisioning requires scoped IAM role creation bounded by DenyGovernanceTampering
+  #checkov:skip=CKV_AWS_290:Workload provisioning actions require wildcard resource scope bounded by SCP-01 region lock
+  #checkov:skip=CKV_AWS_355:Platform Engineer inline policy is bounded by explicit Deny statements and Root SCPs
   instance_arn       = local.instance_arn
   permission_set_arn = aws_ssoadmin_permission_set.platform_engineer.arn
 

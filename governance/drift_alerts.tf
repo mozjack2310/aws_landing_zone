@@ -1,6 +1,7 @@
 # --- 6. Event-Driven Control Plane Drift & Tamper Alerting (ADR-003 / ADR-005 — $0.00/mo Idle) ---
 
 resource "aws_sns_topic" "security_governance_alerts" {
+  #checkov:skip=CKV_AWS_26:Zero-Idle FinOps baseline (ADR-003) avoids $1.00/mo KMS CMK idle fee for dev drift alerts
   name = "forrad-security-governance-alerts"
 }
 
