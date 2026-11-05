@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ForRad Tactical Weather Radar & Telemetry HUD</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+      :root {
+        --bg: #0a0e17;
+        --panel: #111927;
+        --border: #1e293b;
+        --accent: #00f0ff;
+        --accent-ok: #00ff66;
+        --accent-warn: #ffb700;
+        --text: #f1f5f9;
+        --text-dim: #94a3b8;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+        background: var(--bg);
+        color: var(--text);
+        display: flex;
+        height: 100vh;
+        overflow: hidden;
+      }
+      #sidebar {
+        width: 380px;
+        background: var(--panel);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        z-index: 1000;
+      }
+      .header {
+        padding: 16px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .header h1 {
+        font-size: 1.1rem;
+        color: var(--accent);
+        letter-spacing: 0.05em;
+      }
+      .badge {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+        border-radius: 4px;
+        background: rgba(0, 255, 102, 0.1);
+        color: var(--accent-ok);
+        border: 1px solid var(--accent-ok);
+        font-weight: bold;
+      }
+      #stations {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .card {
+        background: rgba(30, 41, 59, 0.5);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 12px;
+        transition: border-color 0.2s;
+      }
+      .card.active {
+        border-color: var(--accent);
+      }
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .card-title {
+        font-size: 1rem;
+        font-weight: bold;
+        color: var(--text);
+      }
+      .card-status {
+        font-size: 0.75rem;
+        color: var(--accent-ok);
+      }
+      .metrics {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        font-size: 0.8rem;
+      }
+      .metric-item {
+        display: flex;
+        flex-direction: column;
+      }
+      .metric-label {
+        color: var(--text-dim);
+        font-size: 0.7rem;
+      }
+      .metric-val {
+        font-size: 0.95rem;
+        font-weight: bold;
+        color: #fff;
+      }
+      #map-container {
+        flex: 1;
+        position: relative;
+      }
+      #map {
+        width: 100%;
+        height: 100%;
+        background: #070a0f;
+      }
+      .status-bar {
+        padding: 8px 16px;
+        background: #070a0f;
+        border-top: 1px solid var(--border);
+        font-size: 0.75rem;
+        color: var(--text-dim);
+        display: flex;
+        justify-content: space-between;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="sidebar">
+      <div class="header">
+        <h1>FORRAD TELEMETRY</h1>
+        <span class="badge" id="conn-status">CONNECTING</span>
+      </div>
+      <div id="stations">
+        <div class="card" id="card-KBMX">
+          <div class="card-header">
+            <span class="card-title">KBMX (Birmingham)</span>
+            <span class="card-status" id="status-KBMX">WAITING...</span>
+          </div>
+          <div class="metrics">
+            <div class="metric-item">
+              <span class="metric-label">TEMP</span
+              ><span class="metric-val" id="temp-KBMX">-- °C</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">PRESSURE</span
+              ><span class="metric-val" id="press-KBMX">-- hPa</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">WIND</span
+              ><span class="metric-val" id="wind-KBMX">-- m/s</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">LATENCY</span
+              ><span class="metric-val" id="lat-KBMX">-- s</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="card-KHTX">
+          <div class="card-header">
+            <span class="card-title">KHTX (Huntsville)</span>
+            <span class="card-status" id="status-KHTX">WAITING...</span>
+          </div>
+          <div class="metrics">
+            <div class="metric-item">
+              <span class="metric-label">TEMP</span
+              ><span class="metric-val" id="temp-KHTX">-- °C</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">PRESSURE</span
+              ><span class="metric-val" id="press-KHTX">-- hPa</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">WIND</span
+              ><span class="metric-val" id="wind-KHTX">-- m/s</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">LATENCY</span
+              ><span class="metric-val" id="lat-KHTX">-- s</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="card-KMXX">
+          <div class="card-header">
+            <span class="card-title">KMXX (Maxwell AFB)</span>
+            <span class="card-status" id="status-KMXX">WAITING...</span>
+          </div>
+          <div class="metrics">
+            <div class="metric-item">
+              <span class="metric-label">TEMP</span
+              ><span class="metric-val" id="temp-KMXX">-- °C</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">PRESSURE</span
+              ><span class="metric-val" id="press-KMXX">-- hPa</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">WIND</span
+              ><span class="metric-val" id="wind-KMXX">-- m/s</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">LATENCY</span
+              ><span class="metric-val" id="lat-KMXX">-- s</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="card-KMOB">
+          <div class="card-header">
+            <span class="card-title">KMOB (Mobile)</span>
+            <span class="card-status" id="status-KMOB">WAITING...</span>
+          </div>
+          <div class="metrics">
+            <div class="metric-item">
+              <span class="metric-label">TEMP</span
+              ><span class="metric-val" id="temp-KMOB">-- °C</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">PRESSURE</span
+              ><span class="metric-val" id="press-KMOB">-- hPa</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">WIND</span
+              ><span class="metric-val" id="wind-KMOB">-- m/s</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">LATENCY</span
+              ><span class="metric-val" id="lat-KMOB">-- s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="status-bar">
+        <span>Backplane: Redis Streams</span>
+        <span id="last-tick">Last Event: None</span>
+      </div>
+    </div>
+
+    <div id="map-container">
+      <div id="map"></div>
+    </div>
+
+    <script>
+      const STATIONS = {
+        KBMX: { name: "KBMX - Birmingham", lat: 33.172, lon: -86.77 },
+        KHTX: { name: "KHTX - Huntsville", lat: 34.931, lon: -86.083 },
+        KMXX: { name: "KMXX - Maxwell AFB", lat: 32.537, lon: -85.79 },
+        KMOB: { name: "KMOB - Mobile", lat: 30.679, lon: -88.24 },
+      };
+
+      const map = L.map("map", { zoomControl: false }).setView(
+        [32.806, -86.791],
+        7,
+      );
+      L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+        {
+          maxZoom: 16,
+          attribution: "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ",
+        },
+      ).addTo(map);
+
+      const markers = {};
+      for (const [id, s] of Object.entries(STATIONS)) {
+        const circle = L.circle([s.lat, s.lon], {
+          color: "#00f0ff",
+          fillColor: "#00f0ff",
+          fillOpacity: 0.05,
+          radius: 120000,
+        }).addTo(map);
+
+        const marker = L.circleMarker([s.lat, s.lon], {
+          color: "#00ff66",
+          fillColor: "#00ff66",
+          fillOpacity: 0.9,
+          radius: 6,
+        })
+          .addTo(map)
+          .bindPopup(`<b>${s.name}</b>`);
+
+        markers[id] = { marker, circle };
+      }
+
+      const connBadge = document.getElementById("conn-status");
+      const lastTickSpan = document.getElementById("last-tick");
+
+      function connectSSE() {
+        const eventSource = new EventSource("/api/v1/telemetry/sse");
+
+        eventSource.onopen = () => {
+          connBadge.textContent = "LIVE SSE";
+          connBadge.style.color = "var(--accent-ok)";
+          connBadge.style.borderColor = "var(--accent-ok)";
+        };
+
+        eventSource.addEventListener("radar_tick", (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            const st = data.StationID;
+            if (!STATIONS[st]) return;
+
+            document.getElementById(`status-${st}`).textContent =
+              data.RadarStatus || "OPERATIONAL";
+            document.getElementById(`temp-${st}`).textContent =
+              (data.TemperatureC || "--") + " °C";
+            document.getElementById(`press-${st}`).textContent =
+              (data.PressureHpa || "--") + " hPa";
+            document.getElementById(`wind-${st}`).textContent =
+              (data.WindSpeedMps || "--") + " m/s";
+            document.getElementById(`lat-${st}`).textContent =
+              (data.LatencySeconds || "0.0") + " s";
+
+            const card = document.getElementById(`card-${st}`);
+            card.classList.add("active");
+            setTimeout(() => card.classList.remove("active"), 800);
+
+            lastTickSpan.textContent = `Last Event: ${event.lastEventId || "tick"}`;
+
+            markers[st].marker.setStyle({
+              color: "#ffffff",
+              fillColor: "#00f0ff",
+            });
+            setTimeout(() => {
+              markers[st].marker.setStyle({
+                color: "#00ff66",
+                fillColor: "#00ff66",
+              });
+            }, 500);
+          } catch (err) {
+            console.error("Malformed SSE frame:", err);
+          }
+        });
+
+        eventSource.onerror = () => {
+          connBadge.textContent = "RECONNECTING";
+          connBadge.style.color = "var(--accent-warn)";
+          connBadge.style.borderColor = "var(--accent-warn)";
+        };
+      }
+
+      connectSSE();
+    </script>
+  </body>
+</html>
