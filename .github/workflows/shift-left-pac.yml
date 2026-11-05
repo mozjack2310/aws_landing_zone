@@ -41,7 +41,7 @@ jobs:
         uses: bridgecrewio/checkov-action@v12
         with:
           directory: spoke-vending
-          external_checks_dir: governance/policies
+          external_checks_dirs: governance/policies
           framework: terraform
           quiet: true
           compact: true
