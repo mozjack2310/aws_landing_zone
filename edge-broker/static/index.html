@@ -63,7 +63,29 @@
         border: 1px solid var(--accent-ok);
         font-weight: bold;
       }
-      #stations {
+      .drift-banner {
+      padding: 10px 16px;
+      font-size: 0.78rem;
+      font-weight: bold;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0, 255, 102, 0.08);
+      color: var(--accent-ok);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: all 0.3s ease;
+    }
+    .drift-banner.alert {
+      background: rgba(255, 59, 48, 0.18);
+      color: #ff4d4d;
+      border-bottom: 1px solid #ff4d4d;
+    }
+    .drift-details {
+      font-size: 0.7rem;
+      font-weight: normal;
+      color: var(--text);
+    }
+    #stations {
         flex: 1;
         overflow-y: auto;
         padding: 12px;
@@ -141,7 +163,14 @@
         <h1>FORRAD TELEMETRY</h1>
         <span class="badge" id="conn-status">CONNECTING</span>
       </div>
-      <div id="stations">
+      <div class="drift-banner" id="drift-banner">
+      <div style="display:flex; justify-content:space-between;">
+        <span>DRIFT ENGINE:</span>
+        <span id="drift-state">BASELINE NOMINAL</span>
+      </div>
+      <div class="drift-details" id="drift-details">Athena SLA: Latency &lt; 12s | Lag &lt; 300s</div>
+    </div>
+    <div id="stations">
         <div class="card" id="card-KBMX">
           <div class="card-header">
             <span class="card-title">KBMX (Birmingham)</span>
@@ -308,6 +337,23 @@
         eventSource.addEventListener("radar_tick", (event) => {
           try {
             const data = JSON.parse(event.data);
+          if (data.event_type === "DRIFT_AUDIT") {
+            const banner = document.getElementById("drift-banner");
+            const stateEl = document.getElementById("drift-state");
+            const detailsEl = document.getElementById("drift-details");
+            if (data.audit_status === "DRIFT_ALERT") {
+              banner.classList.add("alert");
+              stateEl.textContent = "DRIFT ALERT (" + data.anomaly_count + ")";
+              const list = JSON.parse(data.anomalies_json || "[]");
+              detailsEl.textContent = list.join(" | ");
+            } else {
+              banner.classList.remove("alert");
+              stateEl.textContent = "BASELINE NOMINAL";
+              detailsEl.textContent = "Verified via Athena SQL Window Audit";
+            }
+            lastTickSpan.textContent = "Last Audit: " + (event.lastEventId || "now");
+            return;
+          }
             const st = data.StationID;
             if (!STATIONS[st]) return;
 

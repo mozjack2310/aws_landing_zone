@@ -14,7 +14,7 @@ import os
 from typing import AsyncGenerator, Set
 from fastapi import FastAPI, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 import redis.asyncio as aioredis
 
 REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
@@ -86,6 +86,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.get("/")
+async def serve_dashboard():
+    from pathlib import Path; return FileResponse(Path(__file__).resolve().parent / "static" / "index.html")
 
 @app.get("/healthz")
 async def health_check():
