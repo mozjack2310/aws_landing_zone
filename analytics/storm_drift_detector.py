@@ -30,7 +30,7 @@ ALERT_STREAM = "telemetry:alerts"
 def publish_to_hud_and_redis(status: str, anomalies: list[str], metrics_summary: list[dict]):
     """Pushes baseline audit state into Redis Streams and Pub/Sub for the Tactical HUD."""
     try:
-        r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True, socket_connect_timeout=2)
+        r = redis.Redis(username=os.getenv("REDIS_USERNAME", "forrad_broker"), password=os.getenv("REDIS_PASSWORD"), host=REDIS_HOST, port=REDIS_PORT, decode_responses=True, socket_connect_timeout=2)
         now_epoch = int(time.time())
         alert_payload = {
             "event_type": "DRIFT_AUDIT",

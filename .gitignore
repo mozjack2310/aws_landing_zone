@@ -20,3 +20,4 @@ terraform.auto.tfvars
 
 __pycache__/
 *.pyc
+*.tfvars

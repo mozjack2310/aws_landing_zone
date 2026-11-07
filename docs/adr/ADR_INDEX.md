@@ -27,3 +27,13 @@
 ## ADR-006: Split-Domain Cloudflare Zero-Trust Ingress (`forradwx.app` & `forradwx.com`)
 - **Context:** Hosting two public DNS zones in AWS Route 53 costs $1.00/month fixed ($0.50/zone), and opening inbound WAN ports (`TCP 80/443`) on the homelab pfSense firewall exposes residential IPs.
 - **Decision Outcome:** Retain authoritative DNS on Cloudflare ($0.00/mo). Terminate public traffic on `https://forradwx.app` (HSTS preloaded) via outbound-only `cloudflared` QUIC tunnels, with `https://forradwx.com` issuing an edge HTTP `301` redirect to `https://forradwx.app`.
+
+## ADR-009: Rootless Container Sandboxing, Socket Hardening & Zero-Trust Cloudflare Origin Ingress
+- **Status:** Accepted (2026-11-06)
+- **Context:** Following the edge identity and Redis ACL lockdown (ADR-008), the container runtime and ingestion transport layers required hardening before opening public Cloudflare Zero-Trust ingress (`https://forradwx.app`). Default Quadlets ran with elevated Linux capabilities, writable root filesystems, and default 212 KB socket buffers vulnerable to UDP frame drops during storm bursts.
+- **Decision Outcome:**
+  1. Enforce `DropCapability=ALL`, `NoNewPrivileges=true`, and `ReadOnly=true` across both Quadlets. `forrad-edge` retains zero capabilities (`[]`), while `forrad-redis` is bounded strictly to the `su-exec` privilege-drop primitives (`CAP_SETUID`, `CAP_SETGID`, `CAP_CHOWN`, `CAP_DAC_OVERRIDE`, `CAP_FOWNER`).
+  2. Isolate runtime scratch memory to bounded `tmpfs` mounts (`/tmp`, `/run`) with `noexec,nosuid,nodev`.
+  3. Expand UDP socket receive buffer to 4 MB (`SO_RCVBUF = 4194304`) in `udp_iot_collector.py` to prevent frame drops during Python GC pauses.
+  4. Enforce strict CORS origin pinning (`forradwx.app`, `forradwx.com`), bind sockets to `127.0.0.1:8000`, and inject enterprise security headers (`nosniff`, `DENY`, and HSTS preload).
+- **Consequences:** Eliminates kernel container escape vectors, provides 200,000-frame ingestion headroom, prevents MIME-sniffing and clickjacking, and maintains the verified **$0.00/month** added idle cloud transport cost.

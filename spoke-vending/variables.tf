@@ -49,3 +49,13 @@ variable "log_archive_s3_bucket_arn" {
   description = "Centralized S3 Log Archive bucket ARN (ADR-003)"
   default     = "arn:aws:s3:::corp-platform-central-logs-logarchive"
 }
+
+
+variable "allowed_edge_wan_cidrs" {
+  description = "Approved public WAN egress CIDR blocks permitted to assume and execute ForRadEdgeBrokerRole-dev"
+  type        = list(string)
+  validation {
+    condition     = length(var.allowed_edge_wan_cidrs) > 0 && alltrue([for cidr in var.allowed_edge_wan_cidrs : can(cidrhost(cidr, 0))])
+    error_message = "allowed_edge_wan_cidrs must contain at least one valid IPv4 CIDR notation block (e.g., x.x.x.x/32)."
+  }
+}

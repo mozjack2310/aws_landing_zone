@@ -358,7 +358,7 @@ def audit_backplane_health(r: redis.Redis, fallback_count: int, max_lag_sec: int
 
 
 def main() -> None:
-    r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True, socket_connect_timeout=3, socket_timeout=5)
+    r = redis.Redis(username=os.getenv("REDIS_USERNAME", "forrad_broker"), password=os.getenv("REDIS_PASSWORD"), host=REDIS_HOST, port=REDIS_PORT, decode_responses=True, socket_connect_timeout=3, socket_timeout=5)
     ensure_consumer_group(r)
 
     # Single X.509 mTLS Session Instantiation (Caches 1-Hr STS token)

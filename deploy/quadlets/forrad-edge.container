@@ -1,0 +1,36 @@
+[Unit]
+Description=ForRad Edge Broker Telemetry Appliance (UDP, SSE & Cloud Sync)
+After=forrad-redis.service
+Requires=forrad-redis.service
+
+[Container]
+ContainerName=forrad-edge
+Image=localhost/forrad-edge-broker:latest
+Network=host
+DropCapability=ALL
+NoNewPrivileges=true
+ReadOnly=true
+User=0
+
+# Granular Read-Only Mounts
+Volume=%h/aws_landing_zone/certs/edge-broker.crt:%h/aws_landing_zone/certs/edge-broker.crt:ro
+Volume=%h/aws_landing_zone/certs/edge-broker.key:%h/aws_landing_zone/certs/edge-broker.key:ro
+Volume=%h/.aws:%h/.aws:ro
+Volume=/usr/local/bin/aws_signing_helper:/usr/local/bin/aws_signing_helper:ro
+
+# Ephemeral runtime scratch directories for Python cache and locks
+Tmpfs=/tmp:rw,noexec,nosuid,nodev,size=64m
+Tmpfs=/run:rw,noexec,nosuid,nodev,size=16m
+
+EnvironmentFile=%h/.config/containers/systemd/forrad-redis.env
+Environment=HDEF_AWS_PROFILE=forrad-edge-broker
+Environment=AWS_REGION=us-east-1
+Environment=AWS_CONFIG_FILE=%h/.aws/config
+Environment=PYTHONUNBUFFERED=1
+
+[Service]
+Restart=always
+TimeoutStartSec=60
+
+[Install]
+WantedBy=default.target

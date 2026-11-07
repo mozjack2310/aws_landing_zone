@@ -61,7 +61,7 @@ async def pubsub_broadcaster():
 async def lifespan(app: FastAPI):
     """Lifecycle manager initializing Redis and background singleton broadcaster."""
     global REDIS_CLIENT, BROADCASTER_TASK
-    REDIS_CLIENT = aioredis.Redis(
+    REDIS_CLIENT = aioredis.Redis(username=os.getenv("REDIS_USERNAME", "forrad_broker"), password=os.getenv("REDIS_PASSWORD"), 
         host=REDIS_HOST,
         port=REDIS_PORT,
         decode_responses=True,
@@ -86,6 +86,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+    return response
 
 @app.get("/")
 async def serve_dashboard():

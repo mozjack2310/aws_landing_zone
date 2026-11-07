@@ -144,7 +144,7 @@ def compact_and_flush_to_s3(r: redis.Redis, s3_client) -> int:
 
 
 def main() -> None:
-    r = redis.Redis(
+    r = redis.Redis(username=os.getenv("REDIS_USERNAME", "forrad_broker"), password=os.getenv("REDIS_PASSWORD"), 
         host=REDIS_HOST,
         port=REDIS_PORT,
         decode_responses=True,

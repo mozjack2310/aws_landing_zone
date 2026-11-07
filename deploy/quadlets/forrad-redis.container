@@ -1,0 +1,22 @@
+[Unit]
+Description=ForRad Redis 7 Backplane (Streams, AOF Persistence & Zero-Trust ACLs)
+
+[Container]
+ContainerName=forrad-redis
+Image=docker.io/library/redis:7-alpine
+Network=host
+DropCapability=ALL
+AddCapability=SETUID SETGID CHOWN FOWNER DAC_OVERRIDE
+NoNewPrivileges=true
+ReadOnly=true
+Volume=%h/forrad-data/redis:/data:Z
+Volume=%h/.config/containers/systemd/forrad-redis.acl:/etc/redis/users.acl:ro,Z
+Tmpfs=/tmp:rw,noexec,nosuid,nodev,size=32m
+Exec=redis-server --bind 127.0.0.1 --port 6379 --appendonly yes --appendfsync everysec --aclfile /etc/redis/users.acl
+
+[Service]
+Restart=always
+TimeoutStartSec=60
+
+[Install]
+WantedBy=default.target

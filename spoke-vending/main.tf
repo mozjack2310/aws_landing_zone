@@ -239,6 +239,7 @@ data "aws_iam_policy_document" "edge_broker_trust" {
       variable = "aws:PrincipalTag/x509Subject/CN"
       values   = ["forrad-edge-broker-01"]
     }
+
   }
 }
 

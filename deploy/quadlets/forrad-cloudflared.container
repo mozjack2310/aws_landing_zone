@@ -1,0 +1,25 @@
+[Unit]
+Description=Cloudflare Zero-Trust Tunnel Ingress (forradwx.app)
+After=forrad-edge.service
+Requires=forrad-edge.service
+
+[Container]
+ContainerName=forrad-cloudflared
+Image=docker.io/cloudflare/cloudflared:latest
+Network=host
+DropCapability=ALL
+NoNewPrivileges=true
+ReadOnly=true
+
+# Ephemeral scratch space for connector metrics and socket locks
+Tmpfs=/tmp:rw,noexec,nosuid,nodev,size=16m
+
+EnvironmentFile=%h/.config/containers/systemd/forrad-cloudflared.env
+Exec=tunnel run
+
+[Service]
+Restart=always
+TimeoutStartSec=60
+
+[Install]
+WantedBy=default.target

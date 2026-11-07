@@ -38,7 +38,7 @@ def compute_idempotency_token(station_id: str, frame_ts: int, source_type: str =
 
 
 def run_udp_collector():
-    r = redis.Redis(
+    r = redis.Redis(username=os.getenv("REDIS_USERNAME", "forrad_broker"), password=os.getenv("REDIS_PASSWORD"), 
         host=REDIS_HOST,
         port=REDIS_PORT,
         decode_responses=True,
