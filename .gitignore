@@ -17,3 +17,6 @@ backend.hcl
 **/backend.hcl
 terraform.auto.tfvars
 **/terraform.auto.tfvars
+
+__pycache__/
+*.pyc
