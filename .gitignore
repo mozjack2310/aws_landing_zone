@@ -21,3 +21,8 @@ terraform.auto.tfvars
 __pycache__/
 *.pyc
 *.tfvars
+
+# Local Environment Secrets & Vaults
+*.env
+*.env.*
+.env
