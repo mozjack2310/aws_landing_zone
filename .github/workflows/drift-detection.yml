@@ -43,6 +43,7 @@ jobs:
       - name: Execute Drift Check (detailed-exitcode)
         env:
           TF_VAR_budget_alert_email: ${{ secrets.BUDGET_ALERT_EMAIL }}
+          TF_VAR_allowed_edge_wan_cidrs: ${{ secrets.ALLOWED_EDGE_WAN_CIDRS }}
         run: |
           set +e
           terraform -chdir="${{ matrix.layer }}" plan -detailed-exitcode -no-color -input=false
