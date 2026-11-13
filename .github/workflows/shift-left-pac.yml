@@ -19,10 +19,10 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_version: "1.10.5"
 
@@ -38,7 +38,7 @@ jobs:
           done
 
       - name: Execute Checkov Shift-Left Security & FinOps Gate
-        uses: bridgecrewio/checkov-action@v12
+        uses: bridgecrewio/checkov-action@3f0caf0c3aa9f56ade6b49f6e60b63aaeafb75a3 # v12
         with:
           directory: spoke-vending
           external_checks_dirs: governance/policies
@@ -48,7 +48,7 @@ jobs:
           soft_fail: false
 
       - name: Execute Checkov Container Security Gate (edge-broker/Dockerfile)
-        uses: bridgecrewio/checkov-action@v12
+        uses: bridgecrewio/checkov-action@3f0caf0c3aa9f56ade6b49f6e60b63aaeafb75a3 # v12
         with:
           file: edge-broker/Dockerfile
           framework: dockerfile

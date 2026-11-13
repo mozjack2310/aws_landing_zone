@@ -1,0 +1,24 @@
+[Unit]
+Description=ForRad Nexrad Storm Telemetry Drift Detection Auditor (15m Sliding Window)
+Documentation=https://github.com/mozjack2310/aws_landing_zone
+After=forrad-redis.service forrad-edge.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/aws_landing_zone
+Environment=PYTHONUNBUFFERED=1
+Environment=AWS_DEFAULT_REGION=us-east-1
+Environment=AWS_REGION=us-east-1
+Environment=AWS_CONFIG_FILE=%h/.aws/config
+Environment=AWS_PROFILE=forrad-edge-broker
+Environment=HDEF_AWS_PROFILE=forrad-edge-broker
+Environment=REDIS_HOST=127.0.0.1
+Environment=REDIS_PORT=6379
+EnvironmentFile=%h/.config/containers/systemd/forrad-redis.env
+ExecStart=%h/aws_landing_zone/.venv/bin/python3 %h/aws_landing_zone/analytics/storm_drift_detector.py --window-minutes 15
+TimeoutStartSec=180
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
