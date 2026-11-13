@@ -415,3 +415,69 @@ resource "aws_glue_catalog_table" "radar_sweeps_cold" {
     }
   }
 }
+# 9. Autonomous Athena & Glue Query Policy for Drift Detection
+resource "aws_iam_role_policy" "edge_broker_athena" {
+  name = "ForRadAthenaLakehouseQueryPolicy"
+  role = aws_iam_role.edge_broker.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AthenaQueryExecution"
+        Effect = "Allow"
+        Action = [
+          "athena:StartQueryExecution",
+          "athena:GetQueryExecution",
+          "athena:GetQueryResults",
+          "athena:StopQueryExecution",
+          "athena:ListQueryExecutions",
+          "athena:BatchGetQueryExecution",
+          "athena:GetWorkGroup",
+          "athena:GetDataCatalog",
+          "athena:GetDatabase"
+        ]
+        Resource = [
+          "arn:aws:athena:us-east-1:052535487590:workgroup/primary",
+          "arn:aws:athena:us-east-1:052535487590:datacatalog/*"
+        ]
+      },
+      {
+        Sid    = "GlueDataCatalogRead"
+        Effect = "Allow"
+        Action = [
+          "glue:GetDatabase",
+          "glue:GetTable",
+          "glue:GetPartitions",
+          "glue:GetPartition",
+          "glue:BatchGetPartition"
+        ]
+        Resource = [
+          "arn:aws:glue:us-east-1:052535487590:catalog",
+          "arn:aws:glue:us-east-1:052535487590:database/forrad_telemetry_lakehouse_dev",
+          "arn:aws:glue:us-east-1:052535487590:database/default",
+          "arn:aws:glue:us-east-1:052535487590:table/forrad_telemetry_lakehouse_dev/*"
+        ]
+      },
+      {
+        Sid    = "AthenaS3DataAndResultAccess"
+        Effect = "Allow"
+        Action = [
+          "s3:GetBucketLocation",
+          "s3:GetObject",
+          "s3:ListBucket",
+          "s3:ListBucketMultipartUploads",
+          "s3:ListMultipartUploadParts",
+          "s3:AbortMultipartUpload",
+          "s3:PutObject"
+        ]
+        Resource = [
+          "arn:aws:s3:::forrad-cold-lakehouse-dev-052535487590",
+          "arn:aws:s3:::forrad-cold-lakehouse-dev-052535487590/*",
+          "arn:aws:s3:::aws-athena-query-results-052535487590-us-east-1",
+          "arn:aws:s3:::aws-athena-query-results-052535487590-us-east-1/*"
+        ]
+      }
+    ]
+  })
+}
