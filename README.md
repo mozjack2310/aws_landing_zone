@@ -79,7 +79,12 @@ While the infrastructure's **idle baseline is $0.00/month** (zero NAT Gateways, 
 
 ## 3. Empirical Verification Artifacts & Operational Runbooks
 
-* [Architecture Decision Records (ADRs)](docs/)
+* [Architecture Decision Records — Complete Chronological Register (`ADR-001` to `ADR-010`)](docs/adr/ADR_INDEX.md)
+* [ADR-010: Stage 4 Multi-Account Vending Factory & SHA-Pinned CI/CD Supply Chain](docs/adr/ADR-010-multi-account-vending-and-supply-chain.md)
+* [Correction of Error `COE-001`: S3 Tier-1 `PUT` Micro-Batch Exhaustion & `v2.3` Watermark Compaction (`COST01-BP09`)](docs/postmortems/COE-001-s3-tier1-put-compaction.md)
+* [Correction of Error `COE-002`: WSL2 ACPI Sleep Recovery, Split-Horizon DNS & SSE Anti-Buffering (`REL12-BP02`)](docs/postmortems/COE-002-wsl2-acpi-sleep-and-sse-buffering.md)
+* [Security Incident Playbook `PLAY001`: Edge X.509 mTLS Compromise & Control-Plane Drift Containment (`SEC10-BP04`)](docs/playbooks/PLAY001-edge-identity-and-oidc-containment.md)
+* [Operational Readiness Review `ORR-001`: Data Lifecycle, RTO/RPO Targets & Safe Decommissioning (`REL13-BP01`)](docs/operations/ORR-data-lifecycle-and-rto.md)
 * [Phase 1: Zero-Trust X.509 mTLS & Blast-Radius Canary Proof](docs/verification/phase1_mtls_canary_proof.md)
 * [Phase 2B: Queue-First Redis Streams Backplane & Silent-Failure Guardrails Proof](docs/verification/phase2b_redis_streams_proof.md)
 * [Phase 3.2: Edge Caching, CI/CD Secret Injection, & Zero-Drift Validation Proof](docs/verification/phase3_2_edge_cache_proof.md)
