@@ -30,3 +30,6 @@ __pycache__/
 # Cloudflare Worker Build Artifacts
 **/.wrangler/
 **/node_modules/
+
+# Local virtual environment
+.venv/

@@ -4,6 +4,7 @@ FROM registry.access.redhat.com/ubi9/python-312:1
 # Security baseline: Run as non-root user (CKV_DOCKER_8)
 USER 1001
 WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 
 # Install runtime dependencies
 RUN pip install --no-cache-dir boto3 redis pyarrow fastapi uvicorn httpx
@@ -21,6 +22,6 @@ EXPOSE 20777/udp 8000/tcp
 
 # Healthcheck verifying supervisor process readiness (CKV_DOCKER_2)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD python3 -c "import os, sys; sys.exit(0 if os.path.exists('/app/orchestrator.py') else 1)"
+  CMD python3 -c "import urllib.request, sys; r = urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3); sys.exit(0 if r.status == 200 else 1)"
 
 CMD ["python3", "/app/orchestrator.py"]
