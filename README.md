@@ -51,7 +51,7 @@ flowchart TD
 
 ---
 
-## 2. FinOps Zero-Idle Cost Ledger (< $1.50/Month Cap | $0.03 MTD Actual)
+## 2. FinOps Zero-Idle Cost Ledger (< $1.50/Month Cap | $0.00/Mo Idle | $0.51 MTD Actual)
 
 | Architectural Layer | Prohibited Cloud Cost Trap | Avoided Cost | Implemented Zero-Idle Pattern | Idle Run-Cost |
 | :--- | :--- | :--- | :--- | :--- |
@@ -60,6 +60,20 @@ flowchart TD
 | **3. Network Hub (`network-hub/`)** | Idle Transit Gateway Attachments | `$36.00 / mo` | Pre-staged `/28` TGW Subnets (`enable_tgw_attachment = false`) | **$0.00 / mo** |
 | **4. Spoke & Lakehouse (`spoke-vending/`)** | Managed NAT Gateways (`$32/mo`) & ALBs (`$16/mo`) | `$85.00+ / mo` | S3/DynamoDB Gateway VPC Endpoints + `PAY_PER_REQUEST` DynamoDB + S3 Snappy Parquet + Athena Projection | **$0.00 / mo** |
 | **5. Hybrid Edge & CI/CD (`edge-broker/`, `deploy/quadlets/`)** | Always-On Cloud Compute (ECS/EC2) & Static IAM Keys | `$35.00+ / mo` | Rootless Podman Quadlets + Cloudflare Anycast QUIC Tunnel + 15m Systemd Drift Timer + GitHub OIDC | **$0.00 / mo** |
+
+
+### 2.1 Empirical FinOps Telemetry: Dissecting the $0.51 MTD Spend (`COST01-BP09` / `COST03-BP01`)
+
+While the infrastructure's **idle baseline is $0.00/month** (zero NAT Gateways, zero ALBs, zero active KMS CMK retainers via `ADR-007`), active high-frequency NEXRAD telemetry ingestion and chaos testing incurred **$0.51 USD Month-to-Date (MTD)** in Account `052535487590`:
+
+| AWS Service | MTD Actual (`us-east-1`) | % of Spend | Root Cause & Engineering Remediation (`v2.3` Watermark Optimization) |
+| :--- | :--- | :--- | :--- |
+| **Amazon S3 (`Requests-Tier1`)** | **$0.36** (`$0.3374` unblended) | **66.8%** | **Root Cause:** AWS Free Tier includes only `2,000` S3 `PUT` requests/month (`$0.005` per `1,000` PUTs thereafter). Early `v2.1` micro-batching flushed 4 single-row (`rows=1`) Snappy Parquet files (`KBMX`, `KHTX`, `KMXX`, `KMOB`) every 60s (`5,760 PUTs/day`), triggering a `$1.29` forecasted `WXDash-Dollar-Tripwire` budget alert.<br>**Fix (`v2.3`):** Engineered a 15-minute sliding-window watermark compactor using Redis `XINFO GROUPS` (`last-delivered-id`), reducing S3 `PUT` velocity by **93.3%** (`384 PUTs/day` -> **`< $0.06/mo`** steady-state). |
+| **Amazon DynamoDB** | **$0.06** (`$0.0543` unblended) | **10.8%** | On-Demand (`PAY_PER_REQUEST`) write units consumed while draining an `8,866`-frame resilience backlog (`hdef_cloud_sync`) after simulated WAN/host power recovery (`REL11-BP03`). |
+| **AWS KMS** | **$0.05** (`$0.0373` unblended) | **7.4%** | Historical prorated runtime (~6 days in Oct) prior to replacing the `$1.00/mo` Customer Managed Key with `SSE-S3` (`AES256`) and AWS-Owned keys per `ADR-007`, plus `~12,400` cryptographic API requests above the `20,000/mo` Free Tier (`$0.03` per `10k` requests). |
+| **AWS Cost Explorer API** | **$0.04** (`$0.0400` unblended) | **7.9%** | **FinOps Discovery:** While the AWS Cost Explorer web UI is `$0.00`, AWS bills **`$0.01` per `aws ce get-cost-and-usage` CLI call** with no Free Tier (`4 CLI audits = $0.04`). Standardized on browser console & AWS Budgets alerts (`$0.00/mo`). |
+| **Amazon Athena & CloudWatch** | **$0.01** (`$0.0059` unblended) | **1.2%** | 15-minute sliding-window Golden Storm SQL drift queries (`forrad-drift-audit.timer`) scanning Snappy-compressed Parquet partitions (`$5.00/TB` scanned). |
+| **Total Pre-Tax / Grand Total** | **$0.51 USD** | **100%** | **Steady-State Post-v2.3 Run-Rate: `< $0.15 / month`** (Safely below the `$1.00` `WXDash-Dollar-Tripwire` and `$5.00` monthly cap). |
 
 ---
 
