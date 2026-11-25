@@ -31,11 +31,11 @@ CONSUMER_NAME = "forrad-cold-compactor-01"
 
 AWS_PROFILE = os.getenv("HDEF_AWS_PROFILE", os.getenv("AWS_PROFILE", "forrad-edge-broker"))
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
-S3_BUCKET = os.getenv("COLD_LAKEHOUSE_BUCKET", "forrad-cold-lakehouse-dev-052535487590")
+S3_BUCKET = os.getenv("COLD_LAKEHOUSE_BUCKET", "")
 
-BATCH_SIZE = int(os.getenv("COLD_BATCH_SIZE", "500"))
-MIN_BATCH_FRAMES = int(os.getenv("COLD_MIN_BATCH_FRAMES", "60"))
-MAX_BATCH_WAIT_SEC = int(os.getenv("COLD_MAX_WAIT_SEC", "900"))
+BATCH_SIZE = int(os.getenv("COLD_BATCH_SIZE", "1000"))
+MIN_BATCH_FRAMES = int(os.getenv("COLD_MIN_BATCH_FRAMES", "500"))
+MAX_BATCH_WAIT_SEC = int(os.getenv("COLD_MAX_WAIT_SEC", "3600"))
 
 BOTO_CONFIG = Config(
     region_name=AWS_REGION,
@@ -162,6 +162,7 @@ def main(force: bool = False) -> None:
 
     session = boto3.Session(profile_name=AWS_PROFILE, region_name=AWS_REGION)
     s3 = session.client("s3", config=BOTO_CONFIG)
+    bucket_name = S3_BUCKET or f"forrad-cold-lakehouse-{os.getenv('FORRAD_ENV', 'dev')}-{session.client('sts', config=BOTO_CONFIG).get_caller_identity()['Account']}"
 
     objects_written = 0
     for (station_id, day_str), rows in partitions.items():
@@ -175,13 +176,13 @@ def main(force: bool = False) -> None:
         s3_key = f"telemetry/station_id={station_id}/day={day_str}/batch_{first_id}_to_{last_id}.parquet"
 
         s3.put_object(
-            Bucket=S3_BUCKET,
+            Bucket=bucket_name,
             Key=s3_key,
             Body=payload,
             ServerSideEncryption="AES256",
         )
         objects_written += 1
-        print(f"[S3ParquetPut] s3://{S3_BUCKET}/{s3_key} (rows={len(rows)}, bytes={len(payload)}, codec=SNAPPY)")
+        print(f"[S3ParquetPut] s3://{bucket_name}/{s3_key} (rows={len(rows)}, bytes={len(payload)}, codec=SNAPPY)")
 
     if ack_ids:
         r.xack(STREAM_KEY, GROUP_NAME, *ack_ids)

@@ -27,6 +27,9 @@ Environment=HDEF_AWS_PROFILE=forrad-edge-broker
 Environment=AWS_REGION=us-east-1
 Environment=AWS_CONFIG_FILE=%h/.aws/config
 Environment=PYTHONUNBUFFERED=1
+Environment=COLD_BATCH_SIZE=1000
+Environment=COLD_MIN_BATCH_FRAMES=500
+Environment=COLD_MAX_WAIT_SEC=3600
 
 [Service]
 Restart=always

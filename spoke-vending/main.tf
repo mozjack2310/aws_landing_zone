@@ -141,7 +141,7 @@ resource "aws_dynamodb_table" "hybrid_telemetry" {
   }
 
   server_side_encryption {
-    enabled = true
+    enabled = false # Selects AWS Owned Key (AES-256 at rest, $0.00/mo KMS API calls per ADR-007)
   }
 
   ttl {
@@ -213,9 +213,61 @@ resource "aws_s3_bucket_lifecycle_configuration" "cold_lakehouse" {
       noncurrent_days = 30
     }
   }
+
+  rule {
+    id     = "expire-ephemeral-athena-results"
+    status = "Enabled"
+
+    filter {
+      prefix = "athena-results/"
+    }
+
+    expiration {
+      days = 7
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 7
+    }
+  }
+
+  rule {
+    id     = "cleanup-expired-delete-markers"
+    status = "Enabled"
+    filter {}
+
+    expiration {
+      expired_object_delete_marker = true
+    }
+  }
 }
 
 # 7. Zero-Trust Edge Broker IAM Role & Profile (Roles Anywhere X.509 mTLS)
+resource "aws_rolesanywhere_trust_anchor" "spoke_local" {
+  count   = var.create_local_trust_anchor ? 1 : 0
+  name    = "forrad-hybrid-edge-ca-anchor-${var.environment}"
+  enabled = true
+
+  source {
+    source_type = "CERTIFICATE_BUNDLE"
+    source_data {
+      x509_certificate_data = file("${path.module}/../certs/forrad-root-ca.pem")
+    }
+  }
+
+  tags = {
+    Name = "forrad-${var.environment}-trust-anchor"
+  }
+}
+
+locals {
+  effective_trust_anchor_arn = (
+    var.create_local_trust_anchor
+    ? aws_rolesanywhere_trust_anchor.spoke_local[0].arn
+    : data.terraform_remote_state.governance.outputs.rolesanywhere_trust_anchor_arn
+  )
+}
+
 data "aws_iam_policy_document" "edge_broker_trust" {
   statement {
     sid    = "AllowRolesAnywhereAssumeWithPinnedCAAndCN"
@@ -232,7 +284,7 @@ data "aws_iam_policy_document" "edge_broker_trust" {
     condition {
       test     = "ArnEquals"
       variable = "aws:SourceArn"
-      values   = [data.terraform_remote_state.governance.outputs.rolesanywhere_trust_anchor_arn]
+      values   = [local.effective_trust_anchor_arn]
     }
     condition {
       test     = "StringEquals"
@@ -438,8 +490,8 @@ resource "aws_iam_role_policy" "edge_broker_athena" {
           "athena:GetDatabase"
         ]
         Resource = [
-          "arn:aws:athena:us-east-1:052535487590:workgroup/primary",
-          "arn:aws:athena:us-east-1:052535487590:datacatalog/*"
+          "arn:aws:athena:${var.aws_region}:${data.aws_caller_identity.current.account_id}:workgroup/primary",
+          "arn:aws:athena:${var.aws_region}:${data.aws_caller_identity.current.account_id}:datacatalog/*"
         ]
       },
       {
@@ -453,10 +505,10 @@ resource "aws_iam_role_policy" "edge_broker_athena" {
           "glue:BatchGetPartition"
         ]
         Resource = [
-          "arn:aws:glue:us-east-1:052535487590:catalog",
-          "arn:aws:glue:us-east-1:052535487590:database/forrad_telemetry_lakehouse_dev",
-          "arn:aws:glue:us-east-1:052535487590:database/default",
-          "arn:aws:glue:us-east-1:052535487590:table/forrad_telemetry_lakehouse_dev/*"
+          "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:catalog",
+          "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:database/forrad_telemetry_lakehouse_${var.environment}",
+          "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:database/default",
+          "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/forrad_telemetry_lakehouse_${var.environment}/*"
         ]
       },
       {
@@ -472,10 +524,10 @@ resource "aws_iam_role_policy" "edge_broker_athena" {
           "s3:PutObject"
         ]
         Resource = [
-          "arn:aws:s3:::forrad-cold-lakehouse-dev-052535487590",
-          "arn:aws:s3:::forrad-cold-lakehouse-dev-052535487590/*",
-          "arn:aws:s3:::aws-athena-query-results-052535487590-us-east-1",
-          "arn:aws:s3:::aws-athena-query-results-052535487590-us-east-1/*"
+          "arn:aws:s3:::forrad-cold-lakehouse-${var.environment}-${data.aws_caller_identity.current.account_id}",
+          "arn:aws:s3:::forrad-cold-lakehouse-${var.environment}-${data.aws_caller_identity.current.account_id}/*",
+          "arn:aws:s3:::aws-athena-query-results-${data.aws_caller_identity.current.account_id}-${var.aws_region}",
+          "arn:aws:s3:::aws-athena-query-results-${data.aws_caller_identity.current.account_id}-${var.aws_region}/*"
         ]
       }
     ]

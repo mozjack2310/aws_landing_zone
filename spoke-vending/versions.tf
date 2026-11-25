@@ -14,6 +14,14 @@ provider "aws" {
   max_retries = 9
   retry_mode  = "adaptive"
 
+  dynamic "assume_role" {
+    for_each = var.target_account_role_arn != "" ? [var.target_account_role_arn] : []
+    content {
+      role_arn     = assume_role.value
+      session_name = "TerraformSpokeVending-${var.environment}"
+    }
+  }
+
   default_tags {
     tags = {
       Environment = var.environment

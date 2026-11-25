@@ -15,6 +15,7 @@ Environment=HDEF_AWS_PROFILE=forrad-edge-broker
 Environment=REDIS_HOST=127.0.0.1
 Environment=REDIS_PORT=6379
 EnvironmentFile=%h/.config/containers/systemd/forrad-redis.env
+ExecStartPre=/usr/bin/podman exec forrad-edge /opt/app-root/bin/python3 /app/cold_parquet_sync.py --force
 ExecStart=%h/aws_landing_zone/.venv/bin/python3 %h/aws_landing_zone/analytics/storm_drift_detector.py --window-minutes 15
 TimeoutStartSec=180
 StandardOutput=journal

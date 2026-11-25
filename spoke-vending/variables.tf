@@ -59,3 +59,21 @@ variable "allowed_edge_wan_cidrs" {
     error_message = "allowed_edge_wan_cidrs must contain at least one valid IPv4 CIDR notation block (e.g., x.x.x.x/32)."
   }
 }
+
+
+variable "target_account_role_arn" {
+  type        = string
+  description = "Optional cross-account IAM Role ARN (e.g., OrganizationAccountAccessRole) to assume when deploying into a vended member account. Defaults to empty string for local canary execution."
+  default     = ""
+
+  validation {
+    condition     = var.target_account_role_arn == "" || can(regex("^arn:aws:iam::[0-9]{12}:role/.+$", var.target_account_role_arn))
+    error_message = "target_account_role_arn must be empty or a valid IAM Role ARN (arn:aws:iam::<12-digit-id>:role/<name>)."
+  }
+}
+
+variable "create_local_trust_anchor" {
+  type        = bool
+  description = "Provision an account-local IAM Roles Anywhere Trust Anchor from certs/forrad-root-ca.pem (required for vended member accounts; false in management canary to reuse governance anchor)."
+  default     = false
+}
