@@ -45,4 +45,4 @@ KMXX             | 1                | 0.0              | 3.0              | 3
   - Scanned `77.19 KB` in `1021 ms` across 230 live samples per station.
   - Triggered dual synthetic anomalies (`KBMX` +4.2 dBZ calibration drift, `KMOB` 412s transducer stall).
   - Published `DRIFT_ALERT` state to Redis `ui:radar_tick` (`AlertID=1793950962700-0`), illuminating the Tactical HUD Andon banner (`DRIFT ALERT (2)`).
-  - Dispatched out-of-band cloud alert to `arn:aws:sns:us-east-1:052535487590:forrad-security-governance-alerts` (`MessageId=5483f391-5d6c-5d7d-8554-90f6da5acd5a`).
+  - Dispatched out-of-band cloud alert to `arn:aws:sns:us-east-1:<AWS_MGMT_ACCOUNT_ID>:forrad-security-governance-alerts` (`MessageId=5483f391-5d6c-5d7d-8554-90f6da5acd5a`).

@@ -9,7 +9,7 @@
 
 ## 1. Trigger Conditions & Blast Radius
 * **In-Band Trigger:** Tactical HUD status changes to `ANDON: DRIFT_DETECTED` when station latency or telemetry delta breaches Golden Storm thresholds over the 15-minute Athena sliding window (`analytics/storm_drift_detector.py`).
-* **Out-of-Band Trigger:** Amazon SNS alert published to `arn:aws:sns:us-east-1:052535487590:forrad-security-governance-alerts`.
+* **Out-of-Band Trigger:** Amazon SNS alert published to `arn:aws:sns:us-east-1:<AWS_MGMT_ACCOUNT_ID>:forrad-security-governance-alerts`.
 * **Affected Scope:** Real-time Tactical HUD accuracy (`https://forradwx.app`), DynamoDB hot-path state (`forrad-hybrid-telemetry-state-dev`), and S3 Snappy Parquet Lakehouse analytics.
 
 ---

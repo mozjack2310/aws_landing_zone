@@ -9,11 +9,11 @@
 ```
 
 ## 2. Consumer Group 2 (`cold_parquet_compact`) -> S3 Snappy Parquet Compaction
-- **Bucket:** `s3://forrad-cold-lakehouse-dev-052535487590` (`SSE-S3` / `AES256`, 90-day lifecycle)
+- **Bucket:** `s3://forrad-cold-lakehouse-dev-<AWS_MGMT_ACCOUNT_ID>` (`SSE-S3` / `AES256`, 90-day lifecycle)
 - **Compaction Trace:**
 ```text
-[S3ParquetPut] s3://forrad-cold-lakehouse-dev-052535487590/telemetry/station_id=KBMX/day=2026-11-03/batch_1793744362806_0_to_1793744362806_0.parquet (rows=1, bytes=3018, codec=SNAPPY)
-[S3ParquetPut] s3://forrad-cold-lakehouse-dev-052535487590/telemetry/station_id=KBMX/day=2026-11-04/batch_1793827549959_0_to_1793827549959_0.parquet (rows=1, bytes=3018, codec=SNAPPY)
+[S3ParquetPut] s3://forrad-cold-lakehouse-dev-<AWS_MGMT_ACCOUNT_ID>/telemetry/station_id=KBMX/day=2026-11-03/batch_1793744362806_0_to_1793744362806_0.parquet (rows=1, bytes=3018, codec=SNAPPY)
+[S3ParquetPut] s3://forrad-cold-lakehouse-dev-<AWS_MGMT_ACCOUNT_ID>/telemetry/station_id=KBMX/day=2026-11-04/batch_1793827549959_0_to_1793827549959_0.parquet (rows=1, bytes=3018, codec=SNAPPY)
 [ColdDrainComplete] Compacted 8 frames into 8 Parquet objects & XACKed 'cold_parquet_compact' in 1381.7 ms
 ```
 

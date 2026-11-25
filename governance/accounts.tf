@@ -61,7 +61,7 @@ resource "aws_organizations_account" "vended" {
   create_govcloud            = false
 
   lifecycle {
-    ignore_changes = [role_name]
+    ignore_changes = [role_name, iam_user_access_to_billing]
   }
 
   tags = {
@@ -74,8 +74,9 @@ resource "aws_organizations_account" "vended" {
 }
 
 output "vended_account_ids" {
-  description = "Map of logical account keys to their 12-digit AWS Account IDs"
+  description = "Map of logical account keys to their 12-digit AWS Account IDs (masked in public CI logs)"
   value       = { for k, acct in aws_organizations_account.vended : k => acct.id }
+  sensitive   = true
 }
 
 output "vended_account_bootstrap_role_arns" {
@@ -84,4 +85,5 @@ output "vended_account_bootstrap_role_arns" {
     for k, acct in aws_organizations_account.vended :
     k => "arn:aws:iam::${acct.id}:role/${var.vended_accounts[k].role_name}"
   }
+  sensitive = true
 }

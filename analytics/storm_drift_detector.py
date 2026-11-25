@@ -19,7 +19,7 @@ import redis
 PROFILE_NAME = os.getenv("AWS_PROFILE", "terraform")
 REGION = os.getenv("AWS_REGION", "us-east-1")
 DATABASE = "forrad_telemetry_lakehouse_dev"
-OUTPUT_BUCKET = "forrad-cold-lakehouse-dev-052535487590"
+OUTPUT_BUCKET = ""  # Resolved dynamically via STS GetCallerIdentity if COLD_LAKEHOUSE_BUCKET is unset
 
 REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
@@ -86,6 +86,9 @@ def publish_to_sns(session: boto3.Session, anomalies: list[str], simulated: bool
 def run_drift_audit(window_minutes: int, simulate_fault: bool):
     session = boto3.Session(profile_name=PROFILE_NAME, region_name=REGION)
     athena = session.client("athena")
+    global OUTPUT_BUCKET
+    if not OUTPUT_BUCKET:
+        OUTPUT_BUCKET = f"forrad-cold-lakehouse-{os.getenv('FORRAD_ENV', 'dev')}-{session.client('sts').get_caller_identity()['Account']}"
 
     now = int(time.time())
     window_epoch = now - (window_minutes * 60)

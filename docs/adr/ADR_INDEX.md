@@ -54,7 +54,7 @@ This register tracks the architectural evolution of the **ForRad Enterprise AWS 
 ### ADR-007: Tiered Cryptographic Key Selection & Telemetry Visibility Boundaries
 * **Status:** Accepted (2026-11-03) | *Supersedes Dev KMS CMK in ADR-003*
 * **Context:** Provisioning a `$1.00/month` KMS Customer Managed Key (CMK) plus `$0.03/10k` KMS API calls for public NOAA/NWS weather telemetry triggered a `WXDash-Dollar-Tripwire` forecast breach (`COST01-BP09`).
-* **Decision Outcome:** Standardize non-PII public weather telemetry (`forrad-hybrid-telemetry-state-dev`, `forrad-cold-lakehouse-dev-052535487590`) and dev SNS drift alerts on `SSE-S3` (`AES256`) and AWS-Owned encryption (`$0.00/mo`), documented via audited `#checkov:skip` annotations while enforcing `aws:PrincipalOrgID` perimeter locks.
+* **Decision Outcome:** Standardize non-PII public weather telemetry (`forrad-hybrid-telemetry-state-dev`, `forrad-cold-lakehouse-dev-<AWS_MGMT_ACCOUNT_ID>`) and dev SNS drift alerts on `SSE-S3` (`AES256`) and AWS-Owned encryption (`$0.00/mo`), documented via audited `#checkov:skip` annotations while enforcing `aws:PrincipalOrgID` perimeter locks.
 
 ### ADR-008: Edge Identity Perimeter, Offline Root CA Vaulting & Redis 7 ACL Lockdown
 * **Status:** Accepted (2026-11-06)

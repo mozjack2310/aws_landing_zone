@@ -12,7 +12,7 @@
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Tier 0: Edge Hot Buffer** | Local Redis 7 (`telemetry:stream` + AOF `appendonly yes`) | Public Operational Weather Telemetry | Sub-millisecond `XADD` / `XREADGROUP` / `XRANGE` replay | Capped ring buffer (`MAXLEN ~ 10000` frames); local SSD persistence | `$0.00 / mo` |
 | **Tier 1: Cloud Hot State** | Amazon DynamoDB (`forrad-hybrid-telemetry-state-dev`) | Public Operational Weather Telemetry (`SSE-Owned`) | Single-digit ms point lookups by `StationID` (`PAY_PER_REQUEST`) | Latest station state + idempotency token watermark | `$0.00 / mo` |
-| **Tier 2: Cold Analytics Lakehouse** | Amazon S3 (`forrad-cold-lakehouse-dev-052535487590`) + Glue/Athena | Historical Weather Telemetry (`SSE-S3` Snappy Parquet) | 15-minute compacted Parquet batches; Partition Projection by `station_id` & `day` | Compaction every 15m (`v2.3` reduces `PUT`s by 93.3%); archivable after 90 days | `$0.00 / mo` (`< $0.06/mo` active) |
+| **Tier 2: Cold Analytics Lakehouse** | Amazon S3 (`forrad-cold-lakehouse-dev-<AWS_MGMT_ACCOUNT_ID>`) + Glue/Athena | Historical Weather Telemetry (`SSE-S3` Snappy Parquet) | 15-minute compacted Parquet batches; Partition Projection by `station_id` & `day` | Compaction every 15m (`v2.3` reduces `PUT`s by 93.3%); archivable after 90 days | `$0.00 / mo` (`< $0.06/mo` active) |
 | **Tier 3: Control-Plane State** | Amazon S3 (`corp-platform-tfstate-*`) + DynamoDB (`corp-platform-tflocks`) | Confidential Infrastructure State (`SSE-S3` + TLS 1.2+) | Read/Write during CI/CD drift plans and Terraform applies | Object versioning enabled across all 4 isolated state keys | `~$0.03 / mo` |
 
 ---

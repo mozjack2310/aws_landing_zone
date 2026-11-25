@@ -177,7 +177,10 @@ resource "aws_organizations_policy" "scp_workload_invariants" {
         Resource = "*"
         Condition = {
           ArnNotLike = {
-            "aws:PrincipalARN" = ["arn:aws:iam::*:role/AWSControlTowerExecution"]
+            "aws:PrincipalARN" = [
+              "arn:aws:iam::*:role/AWSControlTowerExecution",
+              "arn:aws:iam::*:role/OrganizationAccountAccessRole"
+            ]
           }
         }
       }

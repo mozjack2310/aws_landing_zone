@@ -13,7 +13,7 @@
 ---
 
 ## 1. Context and Problem Statement
-1. **Multi-Account Isolation vs. Control-Plane Quotas (`SEC01-BP01`, `REL01-BP03`):** AWS Organizations (`r-56g0`, Management Account `052535487590`) enforces a concurrency limit of 1 in-flight `CreateAccount` operation. Hardcoding member accounts causes parallel throttling (`ConcurrentModificationException`), exposes contact emails in public Git, and triggers CI/CD drift during hold periods.
+1. **Multi-Account Isolation vs. Control-Plane Quotas (`SEC01-BP01`, `REL01-BP03`):** AWS Organizations (`r-56g0`, Management Account `<AWS_MGMT_ACCOUNT_ID>`) enforces a concurrency limit of 1 in-flight `CreateAccount` operation. Hardcoding member accounts causes parallel throttling (`ConcurrentModificationException`), exposes contact emails in public Git, and triggers CI/CD drift during hold periods.
 2. **CI/CD Mutable Tag Supply-Chain Risk (`SEC11-BP02`):** Referencing third-party GitHub Actions via mutable tags (`@v4`, `@v3`, `@v12`) in workflows holding `id-token: write` OIDC permissions exposes `GitHubActionsLandingZoneRole` if an upstream tag is force-pushed.
 3. **Unattended Drift Auditing (`OPS07-BP03`):** The 15-minute Athena drift detector (`analytics/storm_drift_detector.py`) required autonomous execution via X.509 machine credentials (`AWS_PROFILE=forrad-edge-broker`) rather than expiring human SSO sessions.
 
