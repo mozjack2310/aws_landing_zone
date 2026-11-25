@@ -64,7 +64,7 @@ flowchart TD
 
 ### 2.1 Empirical FinOps Telemetry: Dissecting the $0.51 MTD Spend (`COST01-BP09` / `COST03-BP01`)
 
-While the infrastructure's **idle baseline is $0.00/month** (zero NAT Gateways, zero ALBs, zero active KMS CMK retainers via `ADR-007`), active high-frequency NEXRAD telemetry ingestion and chaos testing incurred **$0.51 USD Month-to-Date (MTD)** in Account `052535487590`:
+While the infrastructure's **idle baseline is $0.00/month** (zero NAT Gateways, zero ALBs, zero active KMS CMK retainers via `ADR-007`), active high-frequency NEXRAD telemetry ingestion and chaos testing incurred **$0.51 USD Month-to-Date (MTD)** in Account `<AWS_MGMT_ACCOUNT_ID>`:
 
 | AWS Service | MTD Actual (`us-east-1`) | % of Spend | Root Cause & Engineering Remediation (`v2.3` Watermark Optimization) |
 | :--- | :--- | :--- | :--- |
