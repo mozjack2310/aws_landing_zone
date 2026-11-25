@@ -8,7 +8,7 @@ data "aws_caller_identity" "current" {}
 data "terraform_remote_state" "governance" {
   backend = "s3"
   config = {
-    bucket = "corp-platform-tfstate-052535487590-us-east-1"
+    bucket = var.governance_state_bucket != "" ? var.governance_state_bucket : "corp-platform-tfstate-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
     key    = "governance/terraform.tfstate"
     region = "us-east-1"
   }

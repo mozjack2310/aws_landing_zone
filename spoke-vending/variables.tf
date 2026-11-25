@@ -77,3 +77,10 @@ variable "create_local_trust_anchor" {
   description = "Provision an account-local IAM Roles Anywhere Trust Anchor from certs/forrad-root-ca.pem (required for vended member accounts; false in management canary to reuse governance anchor)."
   default     = false
 }
+
+variable "governance_state_bucket" {
+  description = "Optional override for the Layer 2 governance remote state S3 bucket (set explicitly in Stage 4 member accounts)."
+  type        = string
+  default     = ""
+  nullable    = false
+}
